@@ -33,7 +33,7 @@ export interface NavbarProps {
   };
   menu: MenuItem[];
   auth: {
-    login: {
+    signin: {
       title: string;
       url: string;
     };
@@ -80,7 +80,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => (
         </div>
         <div className="flex gap-2">
           <Button asChild size="sm" variant="outline">
-            <a href={auth.login.url}>{auth.login.title}</a>
+            <a href={auth.signin.url}>{auth.signin.title}</a>
           </Button>
           <Button asChild size="sm">
             <a href={auth.signup.url}>{auth.signup.title}</a>
@@ -116,7 +116,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => (
 
                 <div className="flex flex-col gap-3">
                   <Button asChild variant="outline">
-                    <a href={auth.login.url}>{auth.login.title}</a>
+                    <a href={auth.signin.url}>{auth.signin.title}</a>
                   </Button>
                   <Button asChild>
                     <a href={auth.signup.url}>{auth.signup.title}</a>

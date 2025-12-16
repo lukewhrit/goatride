@@ -19,10 +19,10 @@ const navItems: NavbarProps = {
     alt: 'logo',
     title: 'Shadcnblocks.com',
   },
-  menu: [{ title: 'Home', url: '#' }],
+  menu: [{ title: 'Home', url: '/' }],
   auth: {
-    login: { title: 'Login', url: '#' },
-    signup: { title: 'Sign up', url: '#' },
+    signin: { title: 'Sign in', url: '/sign-in' },
+    signup: { title: 'Sign up', url: '/sign-up' },
   },
 };
 
