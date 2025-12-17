@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useSession } from '@/lib/auth-client';
 
 import type { JSX } from 'react';
@@ -55,32 +56,56 @@ const DashboardPage = (): JSX.Element => {
                   type="text"
                 />
               </div>
-              <DialogTrigger asChild className="max-w-sm">
-                <Button variant="outline">Create Post</Button>
-              </DialogTrigger>
+              <div className="flex gap-2">
+                <Button variant="default">Find a Ride</Button>
+                <DialogTrigger asChild className="max-w-sm">
+                  <Button variant="outline">Create Post</Button>
+                </DialogTrigger>
+              </div>
             </div>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Edit profile</DialogTitle>
+                <DialogTitle>Create a Post</DialogTitle>
                 <DialogDescription>
-                  Make changes to your profile here. Click save when you&apos;re done.
+                  Enter your information here to post a ride. Click post when you&apos;re done.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-3">
-                  <Label htmlFor="name-1">Name</Label>
-                  <Input defaultValue="Pedro Duarte" id="name-1" name="name" />
+                  <Label htmlFor="origin">Origin</Label>
+                  <Input readOnly defaultValue="Worcester, MA" id="origin" name="origin" />
                 </div>
                 <div className="grid gap-3">
-                  <Label htmlFor="username-1">Username</Label>
-                  <Input defaultValue="@peduarte" id="username-1" name="username" />
+                  <Label htmlFor="destination">Destination</Label>
+                  <Input
+                    defaultValue={(document.getElementById('location') as HTMLFormElement)?.value}
+                    id="destination"
+                    name="destination"
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="username-1">Departing at</Label>
+                  <Input
+                    defaultValue={new Date().toISOString()}
+                    id="departure"
+                    name="departure"
+                    type="datetime-local"
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="seats">Seats available</Label>
+                  <Input defaultValue={1} id="seats" max={8} min={1} name="seats" type="number" />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="comments">Comments</Label>
+                  <Textarea id="comments" name="comments" />
                 </div>
               </div>
               <DialogFooter>
                 <DialogClose asChild>
                   <Button variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button type="submit">Save changes</Button>
+                <Button type="submit">Post</Button>
               </DialogFooter>
             </DialogContent>
           </form>
