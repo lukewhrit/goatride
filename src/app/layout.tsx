@@ -1,3 +1,5 @@
+import ThemeProvider from '@/components/theme';
+
 import './globals.css';
 import Footer from './ui/footer';
 import { Navbar } from './ui/navbar';
@@ -19,7 +21,11 @@ const navItems: NavbarProps = {
     alt: 'logo',
     title: 'Shadcnblocks.com',
   },
-  menu: [{ title: 'Home', url: '/' }],
+  menu: [
+    { title: 'Home', url: '/' },
+    { title: 'Posts', url: '/posts' },
+    { title: 'Settings', url: '/settings' },
+  ],
   auth: {
     signin: { title: 'Sign in', url: '/sign-in' },
     signup: { title: 'Sign up', url: '/sign-up' },
@@ -27,11 +33,13 @@ const navItems: NavbarProps = {
 };
 
 const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => (
-  <html lang="en">
+  <html suppressHydrationWarning lang="en">
     <body className="font-sans antialiased">
-      <Navbar auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
-      <div>{children}</div>
-      <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
+      <ThemeProvider disableTransitionOnChange enableSystem attribute="class" defaultTheme="system">
+        <Navbar auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
+        <div>{children}</div>
+        <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
+      </ThemeProvider>
     </body>
   </html>
 );

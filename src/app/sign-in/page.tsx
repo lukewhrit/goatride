@@ -4,6 +4,10 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { signIn } from '@/lib/auth-client';
 
 import type { JSX } from 'react';
@@ -26,38 +30,62 @@ const SignInPage = (): JSX.Element => {
     if (res.error) {
       setError(res.error.message ?? 'Something went wrong.');
     } else {
-      router.push('/dashboard');
+      router.push('/settings');
     }
   }
 
   return (
-    <main className="max-w-md h-screen flex items-center justify-center flex-col mx-auto p-6 space-y-4 text-white">
-      <h1 className="text-2xl font-bold">Sign In</h1>
-
-      {error ? <p className="text-red-500">{error}</p> : null}
-
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <input
-          required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2"
-          name="email"
-          placeholder="Email"
-          type="email"
-        />
-        <input
-          required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2"
-          name="password"
-          placeholder="Password"
-          type="password"
-        />
-        <button
-          className="w-full bg-white text-black font-medium rounded-md px-4 py-2 hover:bg-gray-200"
-          type="submit"
-        >
-          Sign In
-        </button>
-      </form>
+    <main className="grid grid-cols-2 mx-auto p-6 space-y-4">
+      <section className="flex flex-col justify-center items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Welcome back</h1>
+          <p>Lorem ipsum...</p>
+        </div>
+        {error ? <p className="text-red-500">{error}</p> : null}
+      </section>
+      <section className="flex flex-col justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Sign in to your account</CardTitle>
+            <CardDescription>Enter your information below to access your account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="email">Email address</FieldLabel>
+                  <Input
+                    required
+                    id="email"
+                    name="email"
+                    placeholder="jmdoe@wpi.edu"
+                    type="email"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <Input
+                    required
+                    id="password"
+                    minLength={8}
+                    name="password"
+                    placeholder="Password"
+                    type="password"
+                  />
+                </Field>
+                <FieldGroup>
+                  <Field>
+                    <Button type="submit">Sign In</Button>
+                    <FieldDescription className="px-6 text-center">
+                      Don&apos;t have an account? <a href="/sign-up">Sign up</a>
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 };

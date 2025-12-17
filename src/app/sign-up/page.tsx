@@ -4,7 +4,12 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { Button } from '@/components/ui/button';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { signUp } from '@/lib/auth-client';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 import type { JSX } from 'react';
 
@@ -32,40 +37,54 @@ const SignUpPage = (): JSX.Element => {
   }
 
   return (
-    <main className="max-w-md mx-auto p-6 space-y-4 text-white">
-      <h1 className="text-2xl font-bold">Sign Up</h1>
-
-      {error ? <p className="text-red-500">{error}</p> : null}
-
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <input
-          required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2"
-          name="name"
-          placeholder="Full Name"
-        />
-        <input
-          required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2"
-          name="email"
-          placeholder="Email"
-          type="email"
-        />
-        <input
-          required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2"
-          minLength={8}
-          name="password"
-          placeholder="Password"
-          type="password"
-        />
-        <button
-          className="w-full bg-white text-black font-medium rounded-md px-4 py-2 hover:bg-gray-200"
-          type="submit"
-        >
-          Create Account
-        </button>
-      </form>
+    <main className="grid grid-cols-2 mx-auto p-6 space-y-4">
+      <section className="flex flex-col justify-center items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Create An Account</h1>
+          <p>Lorem ipsum...</p>
+        </div>
+        {error ? <p className="text-red-500">{error}</p> : null}
+      </section>
+      <section className="flex flex-col justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Create an account</CardTitle>
+            <CardDescription>Enter your information below to create an account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                  <Input required id="name" placeholder="John Doe" type="text" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="email">Email address</FieldLabel>
+                  <Input required id="email" placeholder="jmdoe@wpi.edu" type="email" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="password">Full Name</FieldLabel>
+                  <Input
+                    required
+                    id="password"
+                    minLength={8}
+                    placeholder="Password"
+                    type="password"
+                  />
+                </Field>
+                <FieldGroup>
+                  <Field>
+                    <Button type="submit">Create Account</Button>
+                    <FieldDescription className="px-6 text-center">
+                      Already have an account? <a href="/sign-in">Sign in</a>
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 };

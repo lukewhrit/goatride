@@ -10,7 +10,7 @@ import type { JSX } from 'react';
 import type { NavbarProps } from './navbar';
 
 const Footer = ({ logo, menu }: NavbarProps): JSX.Element => (
-  <footer className="bg-gray-100 px-40 py-10">
+  <footer className="border-t-1 px-40 py-10">
     <div className="grid grid-cols-2">
       <div>
         <a className="flex items-center gap-2 mb-3" href={logo.url}>
