@@ -14,15 +14,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String     @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean    @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   sessions      Session[]
   accounts      Account[]
+  ridePosts     RidePost[]
 
   @@unique([email])
   @@map("user")
@@ -74,4 +75,43 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum RideStatus {
+  OPEN
+  FULL
+  CANCELLED
+  COMPLETED
+}
+
+model RidePost {
+  id String @id @default(uuid())
+
+  creatorId String
+  creator   User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  originLat      Float
+  originLng      Float
+  destinationLat Float
+  destinationLng Float
+
+  departureTime  DateTime
+  seatsAvailable Int
+  seatsTaken     Int      @default(0)
+
+  notes String?
+  price Decimal? @db.Decimal(6, 2)
+
+  status RideStatus @default(OPEN)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastEditedAt DateTime?
+
+  @@index([creatorId])
+  @@index([departureTime])
+  @@index([destinationLat])
+  @@index([destinationLng])
+  @@index([status])
+  @@index([createdAt])
 }
