@@ -1,5 +1,28 @@
 # Contributing Guide
 
+Thank you for your interest in contributing to GoatRide.
+
+## Table of Contents
+
+- [Contributing Guide](#contributing-guide)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Initial Setup](#initial-setup)
+  - [Directory Structure](#directory-structure)
+  - [Tools](#tools)
+    - [Code Linting](#code-linting)
+      - [EditorConfig](#editorconfig)
+      - [Prettier](#prettier)
+      - [ESLint](#eslint)
+      - [Husky (Commit Messages)](#husky-commit-messages)
+    - [Design and Components](#design-and-components)
+      - [PostCSS](#postcss)
+      - [TailwindCSS](#tailwindcss)
+      - [shadcn/ui](#shadcnui)
+    - [BetterAuth](#betterauth)
+    - [Prisma ORM](#prisma-orm)
+  - [Other Useful Information](#other-useful-information)
+
 ## Prerequisites
 
 - Node.js

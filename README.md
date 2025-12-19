@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GoatRide
 
-## Getting Started
+GoatRide is a college-focused ridesharing platform designed to make coordinating simple, reliable, and social. Founded at WPI, we make it easy for college students to create, discover, and join rides while automatically managing availability and participation.
 
-First, run the development server:
+Years ago, campus ridesharing was nothing more than a corkboard in the student center where drivers could post notes advertising a ride. Most colleges have gotten rid of this, but the problem of getting home over break or around town still exists for many students. Nowadays, campus ridesharing often relies on group chats. GoatRide centralizes this process by providing a dedicated system for organizing rides, tracking availability, and reducing friction in day-to-day transportation within a university community.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+The application was built by students using Next.JS and TypeScript, with Prisma for database management and BetterAuth for secure user authentication. GoatRide is designed to be lightweight, predictable, and easy to maintain, with a responsive interface that works well across desktop and mobile devices.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Table of Contents
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- [GoatRide](#goatride)
+  - [Table of Contents](#table-of-contents)
+  - [Contributing](#contributing)
+  - [Credits](#credits)
+  - [Vulnerabilities](#vulnerabilities)
+  - [License](#license)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Contributing
 
-## Learn More
+Thank you for your interest in contributing to GoatRide. Please view our [Contributors Guide](CONTRIBUTING.md) to get started.
 
-To learn more about Next.js, take a look at the following resources:
+## Credits
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Vulnerabilities
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The GoatRide team takes security very seriously. If you detect a vulnerability please contact us via email (lukewhrit@proton.me) or create a vulnerability report via Github. We request that you hold of on publishing any vulnerabilities until after they've been patched, or at least 60 days have passed since you reported it.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+GoatRide is licensed under the GNU General Public License v3.0 license. A copy of this license can be found within the [`LICENSE`](LICENSE) file.
