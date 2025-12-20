@@ -25,7 +25,28 @@ export interface PublishPostForm {
   comments: string;
 }
 
-export default async function publishPost(user: User, data: PublishPostForm): Promise<RidePost> {
+export interface RidePostPriceString extends Omit<RidePost, 'price'> {
+  creator: User;
+  price: string;
+}
+
+export async function fetchPosts(): Promise<RidePostPriceString[]> {
+  const posts = await prisma.ridePost.findMany({
+    where: {
+      status: RideStatus.OPEN,
+    },
+    include: {
+      creator: true,
+    },
+  });
+
+  return posts.map((post) => ({
+    ...post,
+    price: post.price?.toString() ?? '0',
+  }));
+}
+
+export async function publishPost(user: User, data: PublishPostForm): Promise<RidePost> {
   return prisma.ridePost.create({
     data: {
       creator: {
@@ -39,7 +60,7 @@ export default async function publishPost(user: User, data: PublishPostForm): Pr
       destinationLat: 0,
       destinationLng: 0,
 
-      departureTime: new Date(),
+      departureTime: new Date(data.departureDate),
       seatsAvailable: data.seatsAvailable,
       seatsTaken: 0,
 

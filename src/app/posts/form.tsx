@@ -1,9 +1,8 @@
 import { useState } from 'react';
 
 import { InformationCircleIcon } from '@heroicons/react/24/solid';
-// eslint-disable-next-line import-x/no-unresolved
 import { zodResolver } from '@hookform/resolvers/zod';
-import { redirect, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 // eslint-disable-next-line import-x/no-namespace
 import * as z from 'zod';
@@ -38,11 +37,11 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import publishPost from './publishPost';
+import { publishPost } from './actions';
 
 import type { JSX } from 'react';
 
-import type { User } from './publishPost';
+import type { User } from './actions';
 
 const formSchema = z.object({
   destination: z.string(),
@@ -125,9 +124,9 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
                   // {...field}
                   disabled
                   readOnly
-                  defaultValue="Worcester, MA"
                   id="origin"
                   name="origin"
+                  value="Worcester, MA"
                 />
                 <InputGroupAddon align="inline-end">
                   <Tooltip>
@@ -163,13 +162,7 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
               render={({ field, fieldState }) => (
                 <Field className="grid gap-3">
                   <FieldLabel>Departing at</FieldLabel>
-                  <Input
-                    {...field}
-                    defaultValue={new Date().toISOString()}
-                    id="departure"
-                    name="departure"
-                    type="date"
-                  />
+                  <Input {...field} id="departure" name="departure" type="date" />
                   {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
                 </Field>
               )}
@@ -181,15 +174,7 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
                 render={({ field, fieldState }) => (
                   <Field className="grid gap-3">
                     <FieldLabel htmlFor="seats">Seats available</FieldLabel>
-                    <Input
-                      {...field}
-                      defaultValue={1}
-                      id="seats"
-                      max={8}
-                      min={1}
-                      name="seats"
-                      type="number"
-                    />
+                    <Input {...field} id="seats" max={8} min={1} name="seats" type="number" />
                     {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
                   </Field>
                 )}
@@ -208,7 +193,6 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
                         {...field}
                         /* Hide up/down button */
                         className="[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
-                        defaultValue="0.00"
                         id="seat-price"
                         max={9999.99}
                         min={0.0}
