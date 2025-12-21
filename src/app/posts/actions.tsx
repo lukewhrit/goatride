@@ -1,6 +1,7 @@
 'use server';
 
 import { RideStatus } from '@/generated/prisma/enums';
+import { geocode } from '@/lib/maps';
 import prisma from '@/lib/prisma';
 
 import type { RidePost } from '@/generated/prisma/client';
@@ -47,6 +48,9 @@ export async function fetchPosts(): Promise<RidePostPriceString[]> {
 }
 
 export async function publishPost(user: User, data: PublishPostForm): Promise<RidePost> {
+  // const geocodedOrigin = await geocode(data.origin);
+  const geocodedDestination = await geocode(data.destination);
+
   return prisma.ridePost.create({
     data: {
       creator: {
@@ -57,8 +61,8 @@ export async function publishPost(user: User, data: PublishPostForm): Promise<Ri
 
       originLat: 42.2741,
       originLng: 71.808,
-      destinationLat: 0,
-      destinationLng: 0,
+      destinationLat: geocodedDestination.lat,
+      destinationLng: geocodedDestination.lng,
 
       departureTime: new Date(data.departureDate),
       seatsAvailable: data.seatsAvailable,

@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,4 +122,20 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.badge-open {
+  @apply bg-green-400;
+}
+
+.badge-full {
+  @apply bg-red-400;
+}
+
+.badge-cancelled {
+  @apply bg-gray-400;
+}
+
+.badge-completed {
+  @apply bg-blue-400;
 }

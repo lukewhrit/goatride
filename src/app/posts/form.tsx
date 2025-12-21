@@ -38,6 +38,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { publishPost } from './actions';
+import AddressInput from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
@@ -83,19 +84,13 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex gap-1 items-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex gap-2 items-center justify-center">
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label className="font-sans font-extrabold text-5xl" htmlFor="location">
               <h1>I&apos;m going to</h1>
             </label>
-            <input
-              className="max-w-lg border-b-2 ml-1 text-5xl outline-white py-1.5 pr-3 pl-1 text-white placeholder:text-gray-500 focus:outline-none"
-              id="location"
-              name="location"
-              placeholder="Union Station..."
-              type="text"
-            />
+            <AddressInput />
           </div>
           <div className="flex gap-2">
             <Button variant="default">Find a Ride</Button>
