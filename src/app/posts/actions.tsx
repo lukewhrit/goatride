@@ -5,6 +5,7 @@ import { geocode } from '@/lib/maps';
 import prisma from '@/lib/prisma';
 
 import type { RidePost } from '@/generated/prisma/client';
+import type { ContactPlatforms } from '@/generated/prisma/enums';
 
 export interface User {
   id: string;
@@ -31,24 +32,41 @@ export interface RidePostPriceString extends Omit<RidePost, 'price'> {
   price: string;
 }
 
-export async function fetchPosts(): Promise<RidePostPriceString[]> {
-  const posts = await prisma.ridePost.findMany({
-    where: {
-      status: RideStatus.OPEN,
-    },
-    include: {
-      creator: true,
-    },
-  });
+export async function fetchPosts(opts: { page: number; pageSize?: number }): Promise<{
+  items: RidePostPriceString[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}> {
+  const pageSize = opts.pageSize ?? 12;
+  const page = Math.max(1, opts.page);
+  const skip = (page - 1) * pageSize;
 
-  return posts.map((post) => ({
-    ...post,
-    price: post.price?.toString() ?? '0',
-  }));
+  const [posts, total] = await Promise.all([
+    prisma.ridePost.findMany({
+      where: { status: RideStatus.OPEN },
+      include: { creator: true },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+    }),
+    prisma.ridePost.count({ where: { status: RideStatus.OPEN } }),
+  ]);
+
+  return {
+    items: posts.map((post) => ({
+      ...post,
+      price: post.price?.toString() ?? '0',
+    })),
+    page,
+    pageSize,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function publishPost(user: User, data: PublishPostForm): Promise<RidePost> {
-  // const geocodedOrigin = await geocode(data.origin);
   const geocodedDestination = await geocode(data.destination);
 
   return prisma.ridePost.create({
@@ -67,6 +85,9 @@ export async function publishPost(user: User, data: PublishPostForm): Promise<Ri
       departureTime: new Date(data.departureDate),
       seatsAvailable: data.seatsAvailable,
       seatsTaken: 0,
+
+      contactMethod: '@lwhrit',
+      contactPlatform: data.contactMethodType as ContactPlatforms,
 
       notes: data.comments,
       price: data.seatPrice,

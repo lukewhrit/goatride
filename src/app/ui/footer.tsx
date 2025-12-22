@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -14,10 +16,10 @@ const Footer = ({ logo, menu }: NavbarProps): JSX.Element => (
     <div className="grid grid-cols-2">
       <div>
         <a className="flex items-center gap-2 mb-3" href={logo.url}>
-          <img alt={logo.alt} className="max-h-8 dark:invert" src={logo.src} />
+          <Image alt={logo.alt} height={32} src={logo.src} width={32} />
           <span className="text-lg font-semibold tracking-tighter">{logo.title}</span>
         </a>
-        <p>© {new Date().getFullYear()} Some Company Name, All Rights Reserved.</p>
+        <p>© {new Date().getFullYear()} Luke Whritenour, All Rights Reserved.</p>
       </div>
       <div className="flex flex-col align-middle">
         <NavigationMenu>

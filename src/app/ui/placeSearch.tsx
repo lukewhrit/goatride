@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { usePlacesAutocomplete } from 'places-autocomplete-hook';
 
@@ -16,7 +16,7 @@ import { geocode } from '@/lib/maps';
 
 import type { JSX } from 'react';
 
-const AddressInput = (): JSX.Element => {
+const AddressSearch = (props: React.ComponentProps<'input'>): JSX.Element => {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
@@ -74,16 +74,16 @@ const AddressInput = (): JSX.Element => {
     const details = await getPlaceDetails(placeId);
     const result = await geocode(details.formattedAddress);
 
-    console.log(result);
+    return result;
   };
 
   return (
     <div className="w-lg max-w-lg">
       <Popover onOpenChange={setOpen} open={open}>
-        <Command className="w-full" shouldFilter={false}>
+        <Command className="w-full border-1 border-b-0" shouldFilter={false}>
           <PopoverTrigger asChild>
             <CommandInput
-              className="w-full"
+              {...props}
               onValueChange={handleInputChange}
               placeholder="Enter an address"
               value={inputValue}
@@ -125,4 +125,4 @@ const AddressInput = (): JSX.Element => {
   );
 };
 
-export default AddressInput;
+export default AddressSearch;

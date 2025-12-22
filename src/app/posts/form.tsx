@@ -36,9 +36,10 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ContactPlatforms } from '@/generated/prisma/enums';
 
 import { publishPost } from './actions';
-import AddressInput from '../ui/placeSearch';
+import AddressSearch from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
@@ -50,7 +51,7 @@ const formSchema = z.object({
   seatsAvailable: z.coerce.number<string>().min(1),
   seatPrice: z.coerce.number<string>().min(0.0),
   contactMethod: z.string(),
-  contactMethodType: z.string(),
+  contactMethodType: z.enum(ContactPlatforms),
   comments: z.string(),
 });
 
@@ -65,7 +66,7 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
       seatsAvailable: '1',
       seatPrice: '0.0',
       contactMethod: '',
-      contactMethodType: '',
+      contactMethodType: ContactPlatforms.INSTAGRAM,
       comments: '',
     },
   });
@@ -90,7 +91,7 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
             <label className="font-sans font-extrabold text-5xl" htmlFor="location">
               <h1>I&apos;m going to</h1>
             </label>
-            <AddressInput />
+            <AddressSearch />
           </div>
           <div className="flex gap-2">
             <Button variant="default">Find a Ride</Button>
@@ -204,37 +205,46 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
                 )}
               />
             </FieldGroup>
-            <Controller
-              control={form.control}
-              name="contactMethod"
-              render={({ field, fieldState }) => (
-                <Field className="grid gap-3">
-                  <FieldLabel htmlFor="contact-method">Contact Method</FieldLabel>
-                  <div className="grid grid-cols-6 gap-3">
-                    <Input
-                      {...field}
-                      className="col-span-4"
-                      id="contact-method"
-                      name="contact-method"
-                      placeholder="@lwhrit"
-                    />
-                    <div className="col-span-2">
-                      <Select>
+            <FieldGroup className="">
+              <FieldLabel htmlFor="contact-method">Contact Method</FieldLabel>
+              <div className="grid grid-cols-6 gap-3">
+                <Controller
+                  control={form.control}
+                  name="contactMethod"
+                  render={({ field, fieldState }) => (
+                    <Field className="col-span-4">
+                      <Input
+                        {...field}
+                        className="col-span-4"
+                        id="contact-method"
+                        name="contact-method"
+                        placeholder="@lwhrit"
+                      />
+                      {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={form.control}
+                  name="contactMethodType"
+                  render={({ field, fieldState }) => (
+                    <Field className="col-span-2">
+                      <Select defaultValue={field.value} onValueChange={field.onChange} {...field}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Method" />
                         </SelectTrigger>
                         <SelectContent align="end" className="[--radius:0.95rem]">
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="instagram">Instagram</SelectItem>
-                          <SelectItem value="sms">SMS</SelectItem>
+                          <SelectItem value={ContactPlatforms.EMAIL}>Email</SelectItem>
+                          <SelectItem value={ContactPlatforms.INSTAGRAM}>Instagram</SelectItem>
+                          <SelectItem value={ContactPlatforms.SMS}>SMS</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                  </div>
-                  {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-                </Field>
-              )}
-            />
+                      {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                    </Field>
+                  )}
+                />
+              </div>
+            </FieldGroup>
             <Controller
               control={form.control}
               name="comments"

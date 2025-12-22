@@ -1,8 +1,11 @@
 import ThemeProvider from '@/components/theme';
 
 import './globals.css';
-import Footer from './ui/footer';
-import { Navbar } from './ui/navbar';
+
+import Footer from '@/app/ui/footer';
+import { Navbar } from '@/app/ui/navbar';
+
+import { Toaster } from '@/components/ui/sonner';
 
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
@@ -16,10 +19,10 @@ export const metadata: Metadata = {
 
 const navItems: NavbarProps = {
   logo: {
-    url: 'https://www.shadcnblocks.com',
-    src: 'https://deifkwefumgah.cloudfront.net/shadcnblocks/block/logos/shadcnblockscom-icon.svg',
+    url: '/',
+    src: 'https://upload.wikimedia.org/wikipedia/en/4/49/WPI_Engineers_primary_logo.svg',
     alt: 'logo',
-    title: 'Shadcnblocks.com',
+    title: 'GoatRide',
   },
   menu: [
     { title: 'Home', url: '/' },
@@ -36,6 +39,7 @@ const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.
   <html suppressHydrationWarning lang="en">
     <body className="font-sans antialiased">
       <ThemeProvider disableTransitionOnChange enableSystem attribute="class" defaultTheme="system">
+        <Toaster closeButton position="top-center" />
         <Navbar auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
         <div>{children}</div>
         <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />

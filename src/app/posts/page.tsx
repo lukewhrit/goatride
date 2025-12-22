@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRightIcon } from '@heroicons/react/24/solid';
 import { Item } from '@radix-ui/react-navigation-menu';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,14 +30,15 @@ import {
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { ContactPlatforms } from '@/generated/prisma/enums';
 import { useSession } from '@/lib/auth-client';
 import { ungeocode } from '@/lib/maps';
+import { cn } from '@/lib/utils';
 
 import { fetchPosts } from './actions';
 import PostRideForm from './form';
@@ -52,13 +54,34 @@ interface PostDisplay extends Omit<RidePostPriceString, 'destinationLat' | 'dest
   destination: string;
 }
 
+enum FmtContactMethods {
+  INSTAGRAM = 'Instagram',
+  SMS = 'SMS',
+  EMAIL = 'Email',
+}
+
+const formatPhoneNumber = (phoneNumber: string): string => {
+  const cleaned = phoneNumber.replace(/\D/g, '');
+
+  const match = /^(\d{3})(\d{3})(\d{4})$/.exec(cleaned);
+
+  if (match) {
+    return `(${match[1]}) ${match[2]}-${match[3]}`;
+  }
+
+  // Return the original string or null if it doesn't fit the pattern
+  return '';
+};
+
 const DashboardPage = (): JSX.Element => {
   const router = useRouter();
   const [posts, setPosts] = useState<PostDisplay[]>();
+  const [totalPages, setTotalPages] = useState(1);
   const { data: session, isPending } = useSession();
   const searchParams = useSearchParams();
-  const pageNumbers = [1, 2, 3, 4, 5];
-  const currentPage = searchParams.get('page') ?? pageNumbers[0];
+  const pageWindow = 5; // how many page numbers are displayed at once
+  const highlight = searchParams.get('highlight') ?? '';
+  const currentPage = Number(searchParams.get('page') ?? '1');
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -70,10 +93,12 @@ const DashboardPage = (): JSX.Element => {
     let cancelled = false;
 
     async function fetchData() {
-      const p = await fetchPosts();
+      const p = await fetchPosts({ page: currentPage, pageSize: 12 });
+
+      setTotalPages(p.totalPages);
 
       const enriched = await Promise.all(
-        p.map(async (post) => {
+        p.items.map(async (post) => {
           try {
             const destination =
               post.destinationLat != null && post.destinationLng != null
@@ -81,7 +106,7 @@ const DashboardPage = (): JSX.Element => {
                 : 'Unknown destination';
 
             return { ...post, origin: 'Worcester, MA', destination };
-          } catch (e) {
+          } catch {
             return { ...post, origin: 'Worcester, MA', destination: 'Unknown destination' };
           }
         }),
@@ -95,10 +120,24 @@ const DashboardPage = (): JSX.Element => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentPage]); // <-- IMPORTANT: refetch when page changes
 
   if (isPending) return <p className="text-center mt-8 text-white">Loading...</p>;
   if (!session?.user) return <p className="text-center mt-8 text-white">Redirecting...</p>;
+
+  const pageNumbers = (() => {
+    const half = Math.floor(pageWindow / 2);
+
+    let start = Math.max(1, currentPage - half);
+    const end = Math.min(totalPages, start + pageWindow - 1);
+
+    // shift window if we're near the end
+    if (end - start + 1 < pageWindow) {
+      start = Math.max(1, end - pageWindow + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  })();
 
   return (
     <div>
@@ -109,18 +148,23 @@ const DashboardPage = (): JSX.Element => {
         <div className="grid grid-cols-4 gap-3">
           {posts?.map((item) => (
             <Dialog key={item.id}>
-              <Card className="flex flex-col">
+              <Card
+                className={cn(
+                  'flex flex-col',
+                  item.id === highlight
+                    ? 'border-2 border-blue-500 shadow-blue-500/50 shadow-lg'
+                    : '',
+                )}
+              >
                 <CardHeader>
                   <CardTitle>
                     {item.origin} to {item.destination}
                   </CardTitle>
-                  <CardDescription className="flex-1">
-                    Posted by {item.creator.name}
-                  </CardDescription>
+                  <CardDescription>Posted by {item.creator.name}</CardDescription>
                 </CardHeader>
                 <CardContent className="mt-auto">
                   {/* Seats: {item.seatsAvailable}/${item.price} */}
-                  {item.departureTime.toDateString()}
+                  {/* {item.departureTime.toDateString()} */}
                 </CardContent>
                 <CardFooter>
                   <DialogTrigger asChild>
@@ -173,7 +217,21 @@ const DashboardPage = (): JSX.Element => {
                   </section>
                 </section>
                 <DialogFooter>
-                  <Button>Send a message</Button>
+                  <Button
+                    onClick={() =>
+                      toast(
+                        `You can contact ${item.contactPlatform === 'SMS' ? formatPhoneNumber(item.contactMethod) : item.contactMethod} on ${FmtContactMethods[item.contactPlatform]}`,
+                        {
+                          action: {
+                            label: 'Copy',
+                            onClick: async () => navigator.clipboard.writeText(item.contactMethod),
+                          },
+                        },
+                      )
+                    }
+                  >
+                    Send a message
+                  </Button>
                   <DialogClose asChild>
                     <Button variant="outline">Close</Button>
                   </DialogClose>
@@ -185,17 +243,23 @@ const DashboardPage = (): JSX.Element => {
       </main>
       <Pagination className="mb-5">
         <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious href={`?page=${currentPage === 1 ? 1 : Number(currentPage) - 1}`} />
-          </PaginationItem>
+          {currentPage !== 1 && (
+            <PaginationItem>
+              <PaginationPrevious href={`?page=${Math.max(1, currentPage - 1)}`} />
+            </PaginationItem>
+          )}
           {pageNumbers.map((v) => (
             <PaginationItem key={v}>
-              <PaginationLink href={`?page=${v}`}>{v}</PaginationLink>
+              <PaginationLink href={`?page=${v}`} isActive={v === currentPage}>
+                {v}
+              </PaginationLink>
             </PaginationItem>
           ))}
-          <PaginationItem>
-            <PaginationNext href={`?page=${Number(currentPage) + 1}`} />
-          </PaginationItem>
+          {currentPage !== pageNumbers[pageNumbers.length - 1] && (
+            <PaginationItem>
+              <PaginationNext href={`?page=${currentPage + 1}`} />
+            </PaginationItem>
+          )}
         </PaginationContent>
       </Pagination>
     </div>

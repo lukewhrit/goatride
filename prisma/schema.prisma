@@ -84,6 +84,12 @@ enum RideStatus {
   COMPLETED
 }
 
+enum ContactPlatforms {
+  INSTAGRAM
+  SMS
+  EMAIL
+}
+
 model RidePost {
   id String @id @default(uuid())
 
@@ -99,7 +105,10 @@ model RidePost {
   seatsAvailable Int
   seatsTaken     Int      @default(0)
 
-  notes String?
+  contactMethod String
+  contactPlatform ContactPlatforms
+
+  notes String   @default("N/A")
   price Decimal? @db.Decimal(6, 2)
 
   status RideStatus @default(OPEN)

@@ -1,6 +1,9 @@
 'use client';
 
 import { Bars3Icon } from '@heroicons/react/24/solid';
+import { router } from 'better-auth/api';
+import Image from 'next/image';
+import Link from 'next/link';
 
 import { Accordion } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -70,7 +73,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
           <div className="flex items-center gap-6">
             {/* Logo */}
             <a className="flex items-center gap-2" href={logo.url}>
-              <img alt={logo.alt} className="max-h-8 dark:invert" src={logo.src} />
+              <Image alt={logo.alt} height={32} src={logo.src} width={32} />
               <span className="text-lg font-semibold tracking-tighter">{logo.title}</span>
             </a>
             <div className="flex items-center">
@@ -90,15 +93,21 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-2 justify-center items-center">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Bars3Icon className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">{session?.user.name ?? 'User'}</span>
-                  <span className="font-mono text-sm">{session?.user.email}</span>
-                </div>
-              </div>
+              <Button
+                asChild
+                className="flex gap-2 justify-center items-center p-4"
+                variant="outline"
+              >
+                <Link href="/settings">
+                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-full">
+                    <Bars3Icon className="size-4" />
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="font-medium">{session?.user.name ?? 'User'}</span>
+                    <span className="font-mono text-sm">{session?.user.email}</span>
+                  </div>
+                </Link>
+              </Button>
             )}
           </div>
         </nav>
