@@ -84,14 +84,18 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex gap-2 items-center justify-center">
+      <form
+        className="w-full xl:w-4xl px-5 flex items-center1 justify-center"
+        id="create-post-form"
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
+        <div className="flex flex-col items-center justify-center gap-3 w-full">
+          <div className="flex flex-col lg:flex-row gap-2 lg:items-center lg:justify-center w-full lg:w-2xl">
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label className="font-sans font-extrabold text-5xl" htmlFor="location">
+            <label className="font-sans font-extrabold text-4xl xl:w-2/3" htmlFor="location">
               <h1>I&apos;m going to</h1>
             </label>
-            <AddressSearch />
+            <AddressSearch className="w-full xl:w-1/3" />
           </div>
           <div className="flex gap-2">
             <Button variant="default">Find a Ride</Button>

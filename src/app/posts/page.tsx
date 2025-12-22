@@ -145,7 +145,7 @@ const DashboardPage = (): JSX.Element => {
         <PostRideForm user={session.user} />
       </header>
       <main className="my-5 px-10">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
           {posts?.map((item) => (
             <Dialog key={item.id}>
               <Card

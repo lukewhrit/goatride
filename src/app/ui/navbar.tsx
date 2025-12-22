@@ -113,11 +113,11 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
         </nav>
 
         {/* Mobile Menu */}
-        <div className="block lg:hidden">
+        <div className="block px-5 lg:hidden">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <a className="flex items-center gap-2" href={logo.url}>
-              <img alt={logo.alt} className="max-h-8 dark:invert" src={logo.src} />
+              <Image alt={logo.alt} height={32} src={logo.src} width={32} />
             </a>
             <Sheet>
               <SheetTrigger asChild>

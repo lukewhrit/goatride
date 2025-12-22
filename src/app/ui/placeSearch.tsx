@@ -78,7 +78,7 @@ const AddressSearch = (props: React.ComponentProps<'input'>): JSX.Element => {
   };
 
   return (
-    <div className="w-lg max-w-lg">
+    <div className="w-full 2xl:w-lg 2xl:max-w-lg">
       <Popover onOpenChange={setOpen} open={open}>
         <Command className="w-full border-1 border-b-0" shouldFilter={false}>
           <PopoverTrigger asChild>

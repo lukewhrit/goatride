@@ -44,7 +44,7 @@ const incentives: Incentive[] = [
 ];
 
 const Home = (): JSX.Element => (
-  <main className="px-30 py-10 flex flex-col gap-10 justify-center">
+  <main className="px-5 xl:px-30 py-10 flex flex-col gap-10 justify-center">
     <section className="px-5 py-30">
       <div className="container text-center">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
