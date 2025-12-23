@@ -38,12 +38,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContactPlatforms } from '@/generated/prisma/enums';
 
-import { publishPost } from './actions';
+import { publishPost } from '../../lib/posts';
 import AddressSearch from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
-import type { User } from './actions';
+import type { User } from '../../lib/posts';
 
 const formSchema = z.object({
   destination: z.string(),
@@ -90,12 +90,14 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
         onSubmit={form.handleSubmit(onSubmit)}
       >
         <div className="flex flex-col items-center justify-center gap-3 w-full">
-          <div className="flex flex-col lg:flex-row gap-2 lg:items-center lg:justify-center w-full lg:w-2xl">
+          <div className="flex lg:items-center lg:justify-center">
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label className="font-sans font-extrabold text-4xl xl:w-2/3" htmlFor="location">
+            <label className="font-sans font-extrabold text-4xl w-1/3" htmlFor="location">
               <h1>I&apos;m going to</h1>
             </label>
-            <AddressSearch className="w-full xl:w-1/3" />
+            <div className="w-2/3">
+              <AddressSearch />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="default">Find a Ride</Button>

@@ -35,11 +35,14 @@ const SignInPage = (): JSX.Element => {
   }
 
   return (
-    <main className="grid grid-cols-2 mx-auto p-6 space-y-4">
+    <main className="grid grid-cols-2 mx-auto p-6 space-y-4 h-[80vh]">
       <section className="flex flex-col justify-center items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Welcome back</h1>
-          <p>Lorem ipsum...</p>
+        <div className="max-w-md">
+          <h1 className="text-3xl mb-2 font-bold">Welcome back</h1>
+          <p>
+            Pick up where you left off. Sign in to view upcoming rides, join new plans, and keep
+            your trips moving.
+          </p>
         </div>
         {error ? <p className="text-red-500">{error}</p> : null}
       </section>

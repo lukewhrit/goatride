@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 
 import type { RidePost } from '@/generated/prisma/client';
 import type { ContactPlatforms } from '@/generated/prisma/enums';
+import type { RidePostWhereInput } from '@/generated/prisma/models';
 
 export interface User {
   id: string;
@@ -32,7 +33,12 @@ export interface RidePostPriceString extends Omit<RidePost, 'price'> {
   price: string;
 }
 
-export async function fetchPosts(opts: { page: number; pageSize?: number }): Promise<{
+export async function fetchPosts(opts: {
+  page: number;
+  pageSize?: number;
+  rideStatus: RideStatus | 'ALL';
+  ownerId?: string;
+}): Promise<{
   items: RidePostPriceString[];
   page: number;
   pageSize: number;
@@ -42,16 +48,20 @@ export async function fetchPosts(opts: { page: number; pageSize?: number }): Pro
   const pageSize = opts.pageSize ?? 12;
   const page = Math.max(1, opts.page);
   const skip = (page - 1) * pageSize;
+  const where: RidePostWhereInput = {
+    ...(opts.rideStatus !== 'ALL' && { status: opts.rideStatus }),
+    ...(opts.ownerId && { creatorId: opts.ownerId }),
+  };
 
   const [posts, total] = await Promise.all([
     prisma.ridePost.findMany({
-      where: { status: RideStatus.OPEN },
+      where,
       include: { creator: true },
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
     }),
-    prisma.ridePost.count({ where: { status: RideStatus.OPEN } }),
+    prisma.ridePost.count({ where }),
   ]);
 
   return {

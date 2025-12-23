@@ -35,26 +35,26 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { ContactPlatforms } from '@/generated/prisma/enums';
 import { useSession } from '@/lib/auth-client';
 import { ungeocode } from '@/lib/maps';
 import { cn } from '@/lib/utils';
 
-import { fetchPosts } from './actions';
 import PostRideForm from './form';
+import { fetchPosts } from '../../lib/posts';
 
 import type { JSX } from 'react';
 
-import type { RidePostPriceString, User } from './actions';
+import type { RidePostPriceString, User } from '../../lib/posts';
 
-interface PostDisplay extends Omit<RidePostPriceString, 'destinationLat' | 'destinationLng'> {
+export interface PostDisplay
+  extends Omit<RidePostPriceString, 'destinationLat' | 'destinationLng'> {
   creator: User;
   price: string;
   origin: string;
   destination: string;
 }
 
-enum FmtContactMethods {
+export enum FmtContactMethods {
   INSTAGRAM = 'Instagram',
   SMS = 'SMS',
   EMAIL = 'Email',
@@ -93,7 +93,7 @@ const DashboardPage = (): JSX.Element => {
     let cancelled = false;
 
     async function fetchData() {
-      const p = await fetchPosts({ page: currentPage, pageSize: 12 });
+      const p = await fetchPosts({ page: currentPage, pageSize: 12, rideStatus: 'OPEN' });
 
       setTotalPages(p.totalPages);
 
@@ -149,8 +149,10 @@ const DashboardPage = (): JSX.Element => {
           {posts?.map((item) => (
             <Dialog key={item.id}>
               <Card
+                onClick={() => router.push(`?highlight=${item.id}`)}
                 className={cn(
                   'flex flex-col',
+                  'transition hover:border-2 hover:border-blue-500',
                   item.id === highlight
                     ? 'border-2 border-blue-500 shadow-blue-500/50 shadow-lg'
                     : '',

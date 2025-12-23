@@ -95,7 +95,8 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
             ) : (
               <Button
                 asChild
-                className="flex gap-2 justify-center items-center p-4"
+                className="flex gap-2 justify-center items-center py-1.5 px-2"
+                size="expand"
                 variant="outline"
               >
                 <Link href="/settings">
@@ -129,7 +130,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                 <SheetHeader>
                   <SheetTitle>
                     <a className="flex items-center gap-2" href={logo.url}>
-                      <img alt={logo.alt} className="max-h-8 dark:invert" src={logo.src} />
+                      <Image alt={logo.alt} height={32} src={logo.src} width={32} />
                     </a>
                   </SheetTitle>
                 </SheetHeader>
@@ -149,14 +150,23 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                         </Button>
                       </div>
                     ) : (
-                      <div>
-                        <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                          <Bars3Icon className="size-4" />
-                        </div>
-                        <div className="flex flex-col gap-0.5 leading-none">
-                          <span className="font-medium">{session?.user.name ?? 'User'}</span>
-                          <span className="font-mono text-sm">{session?.user.email}</span>
-                        </div>
+                      <div className="flex justify-center">
+                        <Button
+                          asChild
+                          className="flex py-1.5 px-2 gap-3 items-center"
+                          size="expand"
+                          variant="outline"
+                        >
+                          <Link href="/settings">
+                            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                              <Bars3Icon className="size-4" />
+                            </div>
+                            <div className="flex flex-col gap-0.5 leading-none">
+                              <span>{session.user.name || 'No Name'}</span>
+                              <span className="font-mono text-sm">{session.user.email}</span>
+                            </div>
+                          </Link>
+                        </Button>
                       </div>
                     )}
                   </div>

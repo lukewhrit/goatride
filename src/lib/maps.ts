@@ -36,10 +36,10 @@ export async function ungeocode(lat: number, lng: number): Promise<string> {
     },
   });
 
-  const ac = res.data.results[0].address_components;
+  const ac = res.data.results[0]?.address_components;
 
-  const town = ac.find((e) => e.types.includes(PlaceType2.locality));
-  const state = ac.find((e) => e.types.includes(PlaceType2.administrative_area_level_1));
+  const town = ac?.find((e) => e.types.includes(PlaceType2.locality));
+  const state = ac?.find((e) => e.types.includes(PlaceType2.administrative_area_level_1));
 
   return `${town?.short_name}, ${state?.short_name}`;
 }

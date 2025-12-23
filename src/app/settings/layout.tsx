@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/solid';
 import { usePathname, useRouter } from 'next/navigation';
@@ -21,45 +21,58 @@ import {
 } from '@/components/ui/sidebar';
 import { signOut, useSession } from '@/lib/auth-client';
 
+import type { User } from 'better-auth';
 import type { JSX } from 'react';
 
 interface Page {
+  key: string;
   title: string;
   url: string;
 }
 
 interface Section {
+  key: string;
   title: string;
   items: Page[];
 }
 
 const sections: Section[] = [
   {
+    key: 'preferences',
     title: 'Preferences',
     items: [
-      { title: 'Personal details', url: '/settings/#preferences' },
-      { title: 'My rides', url: '/settings/my-rides' },
+      { key: 'personal-details', title: 'Personal details', url: '#preferences' },
+      { key: 'my-rides', title: 'My rides', url: '#my-rides' },
     ],
   },
   {
+    key: 'password-and-security',
     title: 'Password and security',
     items: [
-      { title: 'Change password', url: '/settings/#password' },
-      { title: 'Two-factor authentication', url: '/settings/#2fa' },
+      { key: 'password', title: 'Change password', url: '#password' },
+      { key: '2fa', title: 'Two-factor authentication', url: '#2fa' },
     ],
   },
 ];
 
-const useHash = () => {
-  const [hash, setHash] = useState<string>('');
+export const useHash = (): string => {
+  const pathname = usePathname(); // rerun effect when Next navigates
+  const [hash, setHash] = useState('');
 
   useEffect(() => {
     const update = () => setHash(window.location.hash || '');
-    update(); // set initial hash
 
+    update(); // initial + after any navigation
+
+    // still handle true hash-only changes (like clicking #... links)
     window.addEventListener('hashchange', update);
-    return () => window.removeEventListener('hashchange', update);
-  }, []);
+    window.addEventListener('popstate', update);
+
+    return () => {
+      window.removeEventListener('hashchange', update);
+      window.removeEventListener('popstate', update);
+    };
+  }, [pathname]);
 
   return hash;
 };
@@ -70,19 +83,34 @@ const useIsActive = () => {
   const pathname = usePathname();
   const hash = useHash();
 
-  const current = normalize(hash || pathname);
+  const current = `${normalize(pathname)}${hash || ''}`;
 
   return (item: Page) => {
-    const itemKey = item.url.startsWith('#') ? normalize(item.url) : normalize(item.url);
+    const itemUrl = item.url.startsWith('#')
+      ? `${normalize(pathname)}${item.url}`
+      : normalize(item.url);
 
-    // match by URL
-    if (itemKey === current) return true;
-
-    // optional: match by "title" (only if you really want this)
-    // (better: compare to a route key, not a human title)
-    return item.title.toLowerCase() === current.toLowerCase();
+    return itemUrl === current;
   };
 };
+
+interface UserSession {
+  user: User;
+  session: {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    userId: string;
+    expiresAt: Date;
+    token: string;
+    ipAddress?: string | null | undefined;
+    userAgent?: string | null | undefined;
+  };
+}
+
+const userCtx = createContext<UserSession | undefined>(undefined);
+
+export const useUserContext = (): UserSession | undefined => useContext(userCtx);
 
 const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => {
   const isActive = useIsActive();
@@ -105,17 +133,15 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
           <SidebarHeader>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild size="lg">
-                  <div>
-                    <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                      <AdjustmentsHorizontalIcon className="size-4" />
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="font-medium">user</span>
-                      <span className="font-mono text-sm">email</span>
-                    </div>
+                <div className="flex p-1 gap-3 items-center">
+                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                    <AdjustmentsHorizontalIcon className="size-4" />
                   </div>
-                </SidebarMenuButton>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span>{session.user.name || 'No Name'}</span>
+                    <span className="font-mono text-sm">{session.user.email}</span>
+                  </div>
+                </div>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
@@ -149,7 +175,9 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
             <Button className="bg-red-500 text-white hover:bg-red-600">Delete Account</Button>
           </SidebarFooter>
         </Sidebar>
-        <main className="max-w-4xl h-screen p-6 space-y-4 text-white">{children}</main>
+        <main className="w-full h-screen space-y-4 text-white">
+          <userCtx.Provider value={session}>{children}</userCtx.Provider>
+        </main>
       </SidebarProvider>
     </div>
   );
