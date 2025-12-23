@@ -97,7 +97,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                 asChild
                 className="flex gap-2 justify-center items-center py-1.5 px-2"
                 size="expand"
-                variant="outline"
+                variant="ghost"
               >
                 <Link href="/settings">
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-full">
@@ -155,7 +155,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                           asChild
                           className="flex py-1.5 px-2 gap-3 items-center"
                           size="expand"
-                          variant="outline"
+                          variant="ghost"
                         >
                           <Link href="/settings">
                             <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
