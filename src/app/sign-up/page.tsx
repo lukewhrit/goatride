@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { signUp } from '@/lib/auth-client';
+import { signUp, useSession } from '@/lib/auth-client';
 
 import type { JSX } from 'react';
 
@@ -24,10 +24,20 @@ const formSchema = z.object({
 
 const SignUpPage = (): JSX.Element => {
   const router = useRouter();
+  const { data: session, isPending } = useSession();
   const form = useForm({
     resolver: zodResolver(formSchema),
   });
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      router.push('/posts');
+    }
+  }, [isPending, session, router]);
+
+  if (isPending) return <p className="text-center mt-8 text-white">Loading...</p>;
+  if (session?.user) return <p className="text-center mt-8 text-white">Redirecting...</p>;
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     const res = await signUp.email({
@@ -39,7 +49,7 @@ const SignUpPage = (): JSX.Element => {
     if (res.error) {
       setError(res.error.message ?? 'Something went wrong.');
     } else {
-      router.push('/settings');
+      router.push('/posts');
     }
   }
 

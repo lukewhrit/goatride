@@ -33,7 +33,7 @@ import {
 import { ungeocode } from '@/lib/maps';
 import { fetchPosts } from '@/lib/posts';
 
-import { useUserContext } from './layout';
+import { useUserContext } from '../layout';
 import { FmtContactMethods } from '../posts/page';
 
 import type {
@@ -102,8 +102,8 @@ const rideColumns: ColumnDef<PostDisplay>[] = [
   {
     accessorKey: 'contactPlatform',
     header: 'Contact Method Platform',
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion, prettier/prettier
     cell: ({ row }) => (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       <div>{FmtContactMethods[row.getValue('contactPlatform') as ContactPlatforms]}</div>
     ),
   },

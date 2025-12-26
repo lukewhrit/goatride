@@ -19,6 +19,7 @@ export interface User {
 }
 
 export interface PublishPostForm {
+  origin: string;
   destination: string;
   departureDate: string;
   seatsAvailable: number;
@@ -76,10 +77,14 @@ export async function fetchPosts(opts: {
   };
 }
 
-export async function publishPost(user: User, data: PublishPostForm): Promise<RidePost> {
+export async function publishPost(
+  user: User,
+  data: PublishPostForm,
+): Promise<Omit<RidePostPriceString, 'creator'>> {
+  const geocodedOrigin = await geocode(data.origin);
   const geocodedDestination = await geocode(data.destination);
 
-  return prisma.ridePost.create({
+  const post = await prisma.ridePost.create({
     data: {
       creator: {
         connect: {
@@ -87,8 +92,8 @@ export async function publishPost(user: User, data: PublishPostForm): Promise<Ri
         },
       },
 
-      originLat: 42.2741,
-      originLng: 71.808,
+      originLat: geocodedOrigin.lat,
+      originLng: geocodedOrigin.lng,
       destinationLat: geocodedDestination.lat,
       destinationLng: geocodedDestination.lng,
 
@@ -99,10 +104,15 @@ export async function publishPost(user: User, data: PublishPostForm): Promise<Ri
       contactMethod: '@lwhrit',
       contactPlatform: data.contactMethodType as ContactPlatforms,
 
-      notes: data.comments,
+      notes: data.comments ?? 'N/A',
       price: data.seatPrice,
 
       status: RideStatus.OPEN,
     },
   });
+
+  return {
+    ...post,
+    price: post.price?.toString() ?? '0',
+  };
 }

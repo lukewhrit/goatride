@@ -10,9 +10,8 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 
-import { useUserContext } from './layout';
+import { useUserContext } from '../layout';
 
 import type { JSX } from 'react';
 
@@ -53,7 +52,7 @@ const Profile = (): JSX.Element => {
                   A 32-character hexadecimal identifier, unique to your user.
                 </FieldDescription>
               </FieldContent>
-              <p className="self-center font-mono" id="user-id">
+              <p className="self-center font-mono text-muted-foreground" id="user-id">
                 {formatStringToUuid(session?.user.id as string)}
               </p>
             </Field>
@@ -63,24 +62,19 @@ const Profile = (): JSX.Element => {
                 <FieldLabel htmlFor="name">Name</FieldLabel>
                 <FieldDescription>Provide your full name for identification</FieldDescription>
               </FieldContent>
-              <Input required id="name" placeholder="Evil Rabbit" />
+              <Input required id="name" placeholder={session?.user.name as string} />
             </Field>
             <FieldSeparator />
             <Field orientation="responsive">
               <FieldContent>
-                <FieldLabel htmlFor="lastName">Message</FieldLabel>
-                <FieldDescription>
-                  You can write your message here. Keep it short, preferably under 100 characters.
-                </FieldDescription>
+                <FieldLabel htmlFor="lastName">Email</FieldLabel>
+                <FieldDescription>Change your email</FieldDescription>
               </FieldContent>
-              <Textarea
-                required
-                className="min-h-[100px] resize-none sm:min-w-[300px]"
-                id="message"
-                placeholder="Hello, world!"
-              />
+              <div className="flex flex-col gap-3">
+                <Input required id="name" placeholder={session?.user.email as string} />
+                <Input required id="name" placeholder="Confirm email..." />
+              </div>
             </Field>
-            <FieldSeparator />
             <Field orientation="responsive">
               <Button type="submit">Submit</Button>
             </Field>

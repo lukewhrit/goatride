@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 
 import { ArrowRightIcon } from '@heroicons/react/24/solid';
-import { Item } from '@radix-ui/react-navigation-menu';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -41,6 +40,7 @@ import { cn } from '@/lib/utils';
 
 import PostRideForm from './form';
 import { fetchPosts } from '../../lib/posts';
+import AddressSearch from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
@@ -104,10 +104,14 @@ const DashboardPage = (): JSX.Element => {
               post.destinationLat != null && post.destinationLng != null
                 ? await ungeocode(post.destinationLat, post.destinationLng)
                 : 'Unknown destination';
+            const origin =
+              post.originLat != null && post.originLng != null
+                ? await ungeocode(post.originLat, post.originLng)
+                : 'Unknown destination';
 
-            return { ...post, origin: 'Worcester, MA', destination };
+            return { ...post, origin, destination };
           } catch {
-            return { ...post, origin: 'Worcester, MA', destination: 'Unknown destination' };
+            return { ...post, origin: 'Unknown destination', destination: 'Unknown destination' };
           }
         }),
       );
@@ -141,41 +145,49 @@ const DashboardPage = (): JSX.Element => {
 
   return (
     <div>
-      <header className="flex flex-col items-center justify-items-center">
-        <PostRideForm user={session.user} />
+      <header>
+        <div className="flex flex-col items-center justify-center gap-3 w-full">
+          <h1 className="font-sans font-extrabold text-4xl">Where are you going?</h1>
+          <div className="flex gap-3 lg:items-center lg:justify-center max-w-lg">
+            <AddressSearch className="w-xs" />
+            <Button variant="default">Search</Button>
+            <PostRideForm user={session.user} />
+          </div>
+        </div>
       </header>
       <main className="my-5 px-10">
+        {posts ? '' : <p className="text-center">Loading...</p>}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
           {posts?.map((item) => (
             <Dialog key={item.id}>
-              <Card
-                onClick={() => router.push(`?highlight=${item.id}`)}
-                className={cn(
-                  'flex flex-col',
-                  'transition hover:border-2 hover:border-blue-500',
-                  item.id === highlight
-                    ? 'border-2 border-blue-500 shadow-blue-500/50 shadow-lg'
-                    : '',
-                )}
-              >
-                <CardHeader>
-                  <CardTitle>
-                    {item.origin} to {item.destination}
-                  </CardTitle>
-                  <CardDescription>Posted by {item.creator.name}</CardDescription>
-                </CardHeader>
-                <CardContent className="mt-auto">
-                  {/* Seats: {item.seatsAvailable}/${item.price} */}
-                  {/* {item.departureTime.toDateString()} */}
-                </CardContent>
-                <CardFooter>
-                  <DialogTrigger asChild>
+              <DialogTrigger asChild>
+                <Card
+                  onClick={() => router.push(`?highlight=${item.id}`)}
+                  className={cn(
+                    'flex flex-col',
+                    'transition hover:outline-2 hover:outline-blue-500',
+                    item.id === highlight
+                      ? 'outline-2 outline-blue-500 shadow-blue-500/50 shadow-lg'
+                      : '',
+                  )}
+                >
+                  <CardHeader>
+                    <CardTitle>
+                      {item.origin} to {item.destination}
+                    </CardTitle>
+                    <CardDescription>Posted by {item.creator.name}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                    {/* Seats: {item.seatsAvailable}/${item.price} */}
+                    {/* {item.departureTime.toDateString()} */}
+                  </CardContent>
+                  <CardFooter>
                     <Button className="w-full" variant="outline">
                       View Post
                     </Button>
-                  </DialogTrigger>
-                </CardFooter>
-              </Card>
+                  </CardFooter>
+                </Card>
+              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Ride shared by {item.creator.name}</DialogTitle>

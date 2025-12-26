@@ -11,6 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { InputGroup, InputGroupAddon, InputGroupButton } from '@/components/ui/input-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { geocode } from '@/lib/maps';
 
@@ -85,7 +86,7 @@ const AddressSearch = (props: React.ComponentProps<'input'>): JSX.Element => {
             <CommandInput
               {...props}
               onValueChange={handleInputChange}
-              placeholder="Enter an address"
+              placeholder="Enter a town or city"
               value={inputValue}
               onFocus={() => {
                 if (items.length > 0) setOpen(true);

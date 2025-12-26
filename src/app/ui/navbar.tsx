@@ -105,7 +105,9 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-medium">{session?.user.name ?? 'User'}</span>
-                    <span className="font-mono text-sm">{session?.user.email}</span>
+                    <span className="font-mono text-sm text-secondary-foreground">
+                      {session?.user.email}
+                    </span>
                   </div>
                 </Link>
               </Button>

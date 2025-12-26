@@ -94,24 +94,6 @@ const useIsActive = () => {
   };
 };
 
-interface UserSession {
-  user: User;
-  session: {
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    userId: string;
-    expiresAt: Date;
-    token: string;
-    ipAddress?: string | null | undefined;
-    userAgent?: string | null | undefined;
-  };
-}
-
-const userCtx = createContext<UserSession | undefined>(undefined);
-
-export const useUserContext = (): UserSession | undefined => useContext(userCtx);
-
 const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => {
   const isActive = useIsActive();
   const { data: session, isPending } = useSession();
@@ -139,7 +121,9 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span>{session.user.name || 'No Name'}</span>
-                    <span className="font-mono text-sm">{session.user.email}</span>
+                    <span className="font-mono text-sm text-secondary-foreground">
+                      {session.user.email}
+                    </span>
                   </div>
                 </div>
               </SidebarMenuItem>
@@ -175,9 +159,7 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
             <Button className="bg-red-500 text-white hover:bg-red-600">Delete Account</Button>
           </SidebarFooter>
         </Sidebar>
-        <main className="w-full h-screen space-y-4 text-white">
-          <userCtx.Provider value={session}>{children}</userCtx.Provider>
-        </main>
+        <main className="w-full h-screen space-y-4 text-white">{children}</main>
       </SidebarProvider>
     </div>
   );

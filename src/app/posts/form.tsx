@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { InformationCircleIcon } from '@heroicons/react/24/solid';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
@@ -23,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group';
@@ -35,17 +33,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContactPlatforms } from '@/generated/prisma/enums';
 
 import { publishPost } from '../../lib/posts';
-import AddressSearch from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
 import type { User } from '../../lib/posts';
 
 const formSchema = z.object({
+  origin: z.string(),
   destination: z.string(),
   departureDate: z.string(),
   seatsAvailable: z.coerce.number<string>().min(1),
@@ -61,13 +58,14 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      origin: '',
       destination: '',
       departureDate: '',
       seatsAvailable: '1',
       seatPrice: '0.0',
       contactMethod: '',
       contactMethodType: ContactPlatforms.INSTAGRAM,
-      comments: '',
+      comments: 'N/A',
     },
   });
 
@@ -76,6 +74,7 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
       const post = await publishPost(user, data);
 
       setOpen(false);
+      router.refresh();
       router.push(`/posts?highlight=${post.id}`);
     } catch (e) {
       console.error(e);
@@ -84,76 +83,53 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger asChild className="max-w-sm">
+        <Button variant="outline">Share Ride</Button>
+      </DialogTrigger>
       <form
         className="w-full xl:w-4xl px-5 flex items-center1 justify-center"
         id="create-post-form"
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <div className="flex flex-col items-center justify-center gap-3 w-full">
-          <div className="flex lg:items-center lg:justify-center">
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label className="font-sans font-extrabold text-4xl w-1/3" htmlFor="location">
-              <h1>I&apos;m going to</h1>
-            </label>
-            <div className="w-2/3">
-              <AddressSearch />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="default">Find a Ride</Button>
-            <DialogTrigger asChild className="max-w-sm">
-              <Button variant="outline">Create Post</Button>
-            </DialogTrigger>
-          </div>
-        </div>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create a Post</DialogTitle>
+            <DialogTitle>Share a Ride</DialogTitle>
             <DialogDescription>
               Enter your information here to post a ride. Click post when you&apos;re done.
             </DialogDescription>
           </DialogHeader>
           <FieldGroup className="grid gap-3">
             {/* Origin */}
-            {/* <Controller
-            control={form.control}
-            name="origin"
-            render={({ field, fieldState }) => ( */}
-            <Field>
-              <FieldLabel htmlFor="origin">Origin</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  // {...field}
-                  disabled
-                  readOnly
-                  id="origin"
-                  name="origin"
-                  value="Worcester, MA"
-                />
-                <InputGroupAddon align="inline-end">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InputGroupButton aria-label="Help" size="icon-xs" variant="ghost">
-                        <InformationCircleIcon />
-                      </InputGroupButton>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Different origin locations are not currently available.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </InputGroupAddon>
-              </InputGroup>
-              {/* fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null */}
-            </Field>
-            {/* )}
-          /> */}
+            <Controller
+              control={form.control}
+              name="origin"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel htmlFor="origin">Origin</FieldLabel>
+                  <Input
+                    {...field}
+                    id="origin"
+                    name="origin"
+                    placeholder="Worcester, MA"
+                    type="text"
+                  />
+                  {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                </Field>
+              )}
+            />
             <Controller
               control={form.control}
               name="destination"
               render={({ field, fieldState }) => (
                 <Field className="grid gap-3">
                   <FieldLabel htmlFor="destination">Destination</FieldLabel>
-                  <Input {...field} id="destination" name="destination" type="text" />
+                  <Input
+                    {...field}
+                    id="destination"
+                    name="destination"
+                    placeholder="Boston, MA"
+                    type="text"
+                  />
                   {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
                 </Field>
               )}
@@ -276,5 +252,7 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
     </Dialog>
   );
 };
+
+export const dynamic = 'force-dynamic';
 
 export default PostRideForm;

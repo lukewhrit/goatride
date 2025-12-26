@@ -16,8 +16,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
+import { useUserContext } from './layout';
+
 import type { LucideIcon } from 'lucide-react';
-import type { JSX } from 'react';
+import type { ComponentProps, JSX } from 'react';
 
 interface Incentive {
   title: string;
@@ -80,6 +82,30 @@ const features: Incentive[] = [
   },
 ];
 
+const ButtonGroup = (props: ComponentProps<'div'>): JSX.Element => {
+  const user = useUserContext();
+
+  if (user) {
+    return (
+      <div {...props}>
+        <Button asChild size="lg" variant="default">
+          <Link href="/posts">View Posts</Link>
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div {...props}>
+      <Button asChild size="lg" variant="default">
+        <Link href="/sign-up">Create an account</Link>
+      </Button>
+      <Button asChild size="lg" variant="outline">
+        <Link href="/sign-in">Sign in</Link>
+      </Button>
+    </div>
+  );
+};
+
 const Home = (): JSX.Element => (
   <main className="my-5 xl:px-20 flex flex-col gap-10 justify-center items-center">
     <section className="container xl:px-15 py-30">
@@ -91,14 +117,7 @@ const Home = (): JSX.Element => (
             there is easier, cheaper, and more social.
           </p>
         </div>
-        <div className="mt-5 flex gap-3 justify-center">
-          <Button asChild variant="default">
-            <Link href="/sign-up">Create an account</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-        </div>
+        <ButtonGroup className="mt-5 flex gap-3 justify-center" />
       </div>
     </section>
     <section className="w-full xl:px-15">
@@ -134,29 +153,19 @@ const Home = (): JSX.Element => (
     <section className="w-full md:px-5">
       <div className="flex w-full flex-col gap-3 md:gap-4 lg:gap-16 overflow-hidden border rounded-lg p-8 md:rounded-xl lg:flex-row lg:items-center">
         <div className="flex-1">
-          <h3 className="mb-3 text-2xl font-semibold md:mb-4 md:text-4xl lg:mb-6">
-            Call to Action
-          </h3>
+          <h3 className="mb-3 text-2xl font-semibold md:mb-4 md:text-4xl lg:mb-6">Ready to go?</h3>
           <p className="max-w-xl text-muted-foreground lg:text-lg">
             Start posting and joining rides in minutes—your next trip is closer than you think.
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <Button asChild variant="default">
-            <Link href="/sign-up">Create an account</Link>
-          </Button>
-
-          <Button asChild size="lg" variant="outline">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-        </div>
+        <ButtonGroup className="flex shrink-0 flex-col gap-2 sm:flex-row" />
       </div>
     </section>
     <section className="xl:px-15">
       <div className="mx-auto">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">How GoatRide Works</h2>
-          <p className="mt-3 text-muted-foreground">Getting there should be simple.</p>
+          <p className="mt-3 text-muted-foreground">Because getting there should be simple.</p>
         </div>
 
         <div className="relative mt-12">
