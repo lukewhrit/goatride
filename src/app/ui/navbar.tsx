@@ -100,8 +100,8 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
                 variant="ghost"
               >
                 <Link href="/settings">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-full">
-                    <Bars3Icon className="size-4" />
+                  <div className="flex overflow-hidden aspect-square size-8 items-center justify-center rounded-full">
+                    <img alt="Avatar" className="w-full h-full" src={session?.user.image ?? ''} />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-medium">{session?.user.name ?? 'User'}</span>

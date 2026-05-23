@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
-// eslint-disable-next-line import-x/no-namespace
+import { toast } from 'sonner';
 import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,6 @@ const SignUpPage = (): JSX.Element => {
   const form = useForm({
     resolver: zodResolver(formSchema),
   });
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isPending && session?.user) {
@@ -47,7 +46,7 @@ const SignUpPage = (): JSX.Element => {
     });
 
     if (res.error) {
-      setError(res.error.message ?? 'Something went wrong.');
+      toast.error(res.error.message ?? 'Something went wrong.');
     } else {
       router.push('/posts');
     }
@@ -63,7 +62,6 @@ const SignUpPage = (): JSX.Element => {
             rides, and turn plans into real journeys.
           </p>
         </div>
-        {error ? <p className="text-red-500">{error}</p> : null}
       </section>
       <section className="flex flex-col justify-center">
         <Card className="max-w-md">

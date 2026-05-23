@@ -1,11 +1,22 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/solid';
 import { usePathname, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   Sidebar,
   SidebarContent,
@@ -19,9 +30,8 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar';
-import { signOut, useSession } from '@/lib/auth-client';
+import { authClient, signOut, useSession } from '@/lib/auth-client';
 
-import type { User } from 'better-auth';
 import type { JSX } from 'react';
 
 interface Page {
@@ -48,26 +58,19 @@ const sections: Section[] = [
   {
     key: 'password-and-security',
     title: 'Password and security',
-    items: [
-      { key: 'password', title: 'Change password', url: '#password' },
-      { key: '2fa', title: 'Two-factor authentication', url: '#2fa' },
-    ],
+    items: [{ key: 'password', title: 'Change password', url: '#password' }],
   },
 ];
 
 export const useHash = (): string => {
-  const pathname = usePathname(); // rerun effect when Next navigates
+  const pathname = usePathname();
   const [hash, setHash] = useState('');
 
   useEffect(() => {
     const update = () => setHash(window.location.hash || '');
-
-    update(); // initial + after any navigation
-
-    // still handle true hash-only changes (like clicking #... links)
+    update();
     window.addEventListener('hashchange', update);
     window.addEventListener('popstate', update);
-
     return () => {
       window.removeEventListener('hashchange', update);
       window.removeEventListener('popstate', update);
@@ -82,16 +85,67 @@ const normalize = (s: string) => (s.length > 1 ? s.replace(/\/$/, '') : s);
 const useIsActive = () => {
   const pathname = usePathname();
   const hash = useHash();
-
   const current = `${normalize(pathname)}${hash || ''}`;
 
   return (item: Page) => {
     const itemUrl = item.url.startsWith('#')
       ? `${normalize(pathname)}${item.url}`
       : normalize(item.url);
-
     return itemUrl === current;
   };
+};
+
+const scrollToSection = (hash: string) => {
+  if (!hash.startsWith('#')) return;
+  history.pushState(null, '', hash);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  const el = document.querySelector(hash);
+  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+const DeleteAccountDialog = (): JSX.Element => {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    const { error } = await authClient.deleteUser();
+    setLoading(false);
+    if (error) {
+      toast.error(error.message ?? 'Failed to delete account');
+    } else {
+      toast.success('Account deleted');
+      router.push('/');
+    }
+  };
+
+  return (
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger asChild>
+        <Button className="bg-red-500 text-white hover:bg-red-600">Delete Account</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete account</DialogTitle>
+          <DialogDescription>
+            This will permanently delete your account and all your rides. This action cannot be
+            undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button className="bg-red-500 hover:bg-red-600" disabled={loading} onClick={handleDelete}>
+            {loading ? 'Deleting…' : 'Delete my account'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => {
@@ -105,8 +159,8 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
     }
   }, [isPending, session, router]);
 
-  if (isPending) return <p className="text-center mt-8 text-white">Loading...</p>;
-  if (!session?.user) return <p className="text-center mt-8 text-white">Redirecting...</p>;
+  if (isPending) return <p className="text-center mt-8 text-white">Loading…</p>;
+  if (!session?.user) return <p className="text-center mt-8 text-white">Redirecting…</p>;
 
   return (
     <div>
@@ -116,8 +170,8 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
             <SidebarMenu>
               <SidebarMenuItem>
                 <div className="flex p-1 gap-3 items-center">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <AdjustmentsHorizontalIcon className="size-4" />
+                  <div className="flex overflow-hidden aspect-square size-8 items-center justify-center rounded-full">
+                    <img alt="Avatar" className="w-full h-full" src={session?.user.image ?? ''} />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span>{session.user.name || 'No Name'}</span>
@@ -131,14 +185,22 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
           </SidebarHeader>
           <SidebarContent>
             {sections.map((s) => (
-              <SidebarGroup key={s.title}>
+              <SidebarGroup key={s.key}>
                 <SidebarGroupLabel>{s.title}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {s.items.map((item) => (
-                      <SidebarMenuItem key={item.title}>
+                      <SidebarMenuItem key={item.key}>
                         <SidebarMenuButton asChild isActive={isActive(item)}>
-                          <a href={item.url}>{item.title}</a>
+                          <a
+                            href={item.url}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              scrollToSection(item.url);
+                            }}
+                          >
+                            {item.title}
+                          </a>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -150,13 +212,13 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
           <SidebarFooter>
             <Button
               onClick={async () => {
-                signOut();
+                await signOut();
                 router.push('/');
               }}
             >
               Sign Out
             </Button>
-            <Button className="bg-red-500 text-white hover:bg-red-600">Delete Account</Button>
+            <DeleteAccountDialog />
           </SidebarFooter>
         </Sidebar>
         <main className="w-full h-screen space-y-4 text-white">{children}</main>

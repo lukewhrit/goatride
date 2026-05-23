@@ -29,6 +29,18 @@ export interface PublishPostForm {
   comments: string;
 }
 
+export interface UpdatePostForm {
+  origin?: string;
+  destination?: string;
+  departureDate?: string;
+  seatsAvailable?: number;
+  seatPrice?: number;
+  contactMethod?: string;
+  contactMethodType?: string;
+  comments?: string;
+  status?: RideStatus;
+}
+
 export interface RidePostPriceString extends Omit<RidePost, 'price'> {
   creator: User;
   price: string;
@@ -101,7 +113,7 @@ export async function publishPost(
       seatsAvailable: data.seatsAvailable,
       seatsTaken: 0,
 
-      contactMethod: '@lwhrit',
+      contactMethod: data.contactMethod,
       contactPlatform: data.contactMethodType as ContactPlatforms,
 
       notes: data.comments ?? 'N/A',
@@ -115,4 +127,38 @@ export async function publishPost(
     ...post,
     price: post.price?.toString() ?? '0',
   };
+}
+
+export async function updatePost(id: string, userId: string, data: UpdatePostForm): Promise<void> {
+  const [geocodedOrigin, geocodedDestination] = await Promise.all([
+    data.origin ? geocode(data.origin) : Promise.resolve(null),
+    data.destination ? geocode(data.destination) : Promise.resolve(null),
+  ]);
+
+  await prisma.ridePost.update({
+    where: { id, creatorId: userId },
+    data: {
+      ...(geocodedOrigin && { originLat: geocodedOrigin.lat, originLng: geocodedOrigin.lng }),
+      ...(geocodedDestination && {
+        destinationLat: geocodedDestination.lat,
+        destinationLng: geocodedDestination.lng,
+      }),
+      ...(data.departureDate && { departureTime: new Date(data.departureDate) }),
+      ...(data.seatsAvailable !== undefined && { seatsAvailable: data.seatsAvailable }),
+      ...(data.seatPrice !== undefined && { price: data.seatPrice }),
+      ...(data.contactMethod && { contactMethod: data.contactMethod }),
+      ...(data.contactMethodType && {
+        contactPlatform: data.contactMethodType as ContactPlatforms,
+      }),
+      ...(data.comments && { notes: data.comments }),
+      ...(data.status && { status: data.status }),
+      lastEditedAt: new Date(),
+    },
+  });
+}
+
+export async function deletePost(id: string, userId: string): Promise<void> {
+  await prisma.ridePost.delete({
+    where: { id, creatorId: userId },
+  });
 }
