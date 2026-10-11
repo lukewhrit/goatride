@@ -8,6 +8,7 @@ import './globals.css';
 import Footer from '@/app/ui/footer';
 import { Navbar } from '@/app/ui/navbar';
 import { Toaster } from '@/components/ui/sonner';
+import { Analytics } from '@vercel/analytics/next';
 
 import type { User } from 'better-auth';
 
@@ -74,6 +75,7 @@ const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.
             <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
           </ThemeProvider>
         </userCtx.Provider>
+        <Analytics />
       </body>
     </html>
   );
