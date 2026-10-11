@@ -60,7 +60,7 @@ const ChangePassword = (): JSX.Element => {
   };
 
   return (
-    <section className="w-full max-w-3xl" id="password">
+    <section className="w-full" id="password">
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FieldSet>
           <FieldLegend>

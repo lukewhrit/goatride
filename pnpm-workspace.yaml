@@ -5,3 +5,4 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+  workerd: set this to true or false

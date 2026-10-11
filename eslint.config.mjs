@@ -78,6 +78,8 @@ const prettierConfig = [
 export default [
   // Ignore .gitignore files/folder in eslint
   includeIgnoreFile(gitignorePath),
+  // Vendored shadcn/ui components and generated code follow upstream style, not ours
+  { ignores: ['src/components/ui/**', 'src/generated/**', 'src/hooks/use-mobile.ts'] },
   // Javascript Config
   ...jsConfig,
   // Next Config
@@ -88,6 +90,15 @@ export default [
   ...prettierConfig,
   {
     rules: {
+      // Fragment shorthand and TS default parameters are idiomatic in React 19
+      'react/jsx-fragments': ['error', 'syntax'],
+      'react/require-default-props': 'off',
+      // TanStack Table column `cell`/`header` renderers are defined inline by design
+      'react/no-unstable-nested-components': ['error', { allowAsProps: true }],
+      // React Compiler rules (react-hooks v7) flag our fetch-in-effect data loading; surface
+      // them as warnings until that code moves to server components or a data-fetching library
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
       'max-len': [
         'error',
         {
@@ -99,6 +110,12 @@ export default [
           ignoreRegExpLiterals: true,
         },
       ],
+    },
+  },
+  {
+    files: ['tests/**', '*.config.{ts,mjs}'],
+    rules: {
+      'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
     },
   },
 ];

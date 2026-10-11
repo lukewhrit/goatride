@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { nextCookies } from 'better-auth/next-js';
 import { twoFactor } from 'better-auth/plugins';
 
 import prisma from '@/lib/prisma';
@@ -11,6 +12,17 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: 8,
   },
-  plugins: [twoFactor()],
+  user: {
+    deleteUser: { enabled: true },
+    changeEmail: {
+      enabled: true,
+      // No email provider is wired up yet, so unverified users change email directly (guarded by a
+      // password check in lib/user.ts). Add sendChangeEmailVerification once email is set up.
+      updateEmailWithoutVerification: true,
+    },
+  },
+  // nextCookies must be last so server actions calling auth.api can set cookies.
+  plugins: [twoFactor(), nextCookies()],
 });

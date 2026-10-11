@@ -10,14 +10,28 @@ The application was built by students using Next.JS and TypeScript, with Prisma 
 
 - [GoatRide](#goatride)
   - [Table of Contents](#table-of-contents)
+  - [Development](#development)
   - [Contributing](#contributing)
   - [Credits](#credits)
   - [Vulnerabilities](#vulnerabilities)
   - [License](#license)
 
+## Development
+
+Requires Node 22+, pnpm, and a Postgres database.
+
+```sh
+pnpm install
+cp .env.example .env   # then fill in the values
+pnpm prisma migrate dev
+pnpm dev
+```
+
+Before opening a PR, run `pnpm lint`, `pnpm typecheck`, and `pnpm test`. CI runs these plus a migration check and a production build.
+
 ## Contributing
 
-Thank you for your interest in contributing to GoatRide. Please view our [Contributors Guide](CONTRIBUTING.md) to get started.
+Thank you for your interest in contributing to GoatRide. Please view our [Contributors Guide](.github/CONTRIBUTING.md) to get started.
 
 ## Credits
 

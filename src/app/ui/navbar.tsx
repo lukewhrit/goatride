@@ -1,7 +1,6 @@
 'use client';
 
 import { Bars3Icon } from '@heroicons/react/24/solid';
-import { router } from 'better-auth/api';
 import Image from 'next/image';
 import Link from 'next/link';
 

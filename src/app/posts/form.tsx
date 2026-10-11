@@ -25,21 +25,11 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { ContactPlatforms } from '@/generated/prisma/enums';
 
 import { publishPost } from '../../lib/posts';
 
 import type { JSX } from 'react';
-
-import type { User } from '../../lib/posts';
 
 const formSchema = z.object({
   origin: z.string(),
@@ -47,12 +37,10 @@ const formSchema = z.object({
   departureDate: z.string(),
   seatsAvailable: z.coerce.number<string>().min(1),
   seatPrice: z.coerce.number<string>().min(0.0),
-  contactMethod: z.string(),
-  contactMethodType: z.enum(ContactPlatforms),
   comments: z.string(),
 });
 
-const PostRideForm = ({ user }: { user: User }): JSX.Element => {
+const PostRideForm = (): JSX.Element => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const form = useForm({
@@ -63,15 +51,13 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
       departureDate: '',
       seatsAvailable: '1',
       seatPrice: '0.0',
-      contactMethod: '',
-      contactMethodType: ContactPlatforms.INSTAGRAM,
       comments: 'N/A',
     },
   });
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
-      const post = await publishPost(user, data);
+      const post = await publishPost(data);
 
       setOpen(false);
       router.refresh();
@@ -186,46 +172,6 @@ const PostRideForm = ({ user }: { user: User }): JSX.Element => {
                   </Field>
                 )}
               />
-            </FieldGroup>
-            <FieldGroup className="">
-              <FieldLabel htmlFor="contact-method">Contact Method</FieldLabel>
-              <div className="grid grid-cols-6 gap-3">
-                <Controller
-                  control={form.control}
-                  name="contactMethod"
-                  render={({ field, fieldState }) => (
-                    <Field className="col-span-4">
-                      <Input
-                        {...field}
-                        className="col-span-4"
-                        id="contact-method"
-                        name="contact-method"
-                        placeholder="@lwhrit"
-                      />
-                      {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={form.control}
-                  name="contactMethodType"
-                  render={({ field, fieldState }) => (
-                    <Field className="col-span-2">
-                      <Select defaultValue={field.value} onValueChange={field.onChange} {...field}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Method" />
-                        </SelectTrigger>
-                        <SelectContent align="end" className="[--radius:0.95rem]">
-                          <SelectItem value={ContactPlatforms.EMAIL}>Email</SelectItem>
-                          <SelectItem value={ContactPlatforms.INSTAGRAM}>Instagram</SelectItem>
-                          <SelectItem value={ContactPlatforms.SMS}>SMS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-                    </Field>
-                  )}
-                />
-              </div>
             </FieldGroup>
             <Controller
               control={form.control}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/solid';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -97,7 +96,7 @@ const useIsActive = () => {
 
 const scrollToSection = (hash: string) => {
   if (!hash.startsWith('#')) return;
-  history.pushState(null, '', hash);
+  window.history.pushState(null, '', hash);
   window.dispatchEvent(new HashChangeEvent('hashchange'));
   const el = document.querySelector(hash);
   el?.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -47,6 +47,7 @@ const navItems: NavbarProps = {
   menu: [
     { title: 'Home', url: '/' },
     { title: 'Rides', url: '/posts' },
+    { title: 'Messages', url: '/messages' },
   ],
   auth: {
     signin: { title: 'Sign in', url: '/sign-in' },

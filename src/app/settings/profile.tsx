@@ -43,6 +43,7 @@ const emailSchema = z
   .object({
     email: z.string().email('Invalid email address'),
     confirmEmail: z.string().email('Invalid email address'),
+    currentPassword: z.string().min(1, 'Current password is required'),
   })
   .refine((d) => d.email === d.confirmEmail, {
     message: 'Emails do not match',
@@ -187,7 +188,7 @@ const EmailForm = (): JSX.Element => {
   const session = useUserContext();
   const form = useForm({
     resolver: zodResolver(emailSchema),
-    defaultValues: { email: '', confirmEmail: '' },
+    defaultValues: { email: '', confirmEmail: '', currentPassword: '' },
   });
 
   const onSubmit = async (data: z.infer<typeof emailSchema>) => {
@@ -196,8 +197,8 @@ const EmailForm = (): JSX.Element => {
       return;
     }
     try {
-      await changeEmail(data.email);
-      toast.success('Email updated — please sign in again');
+      await changeEmail(data.email, data.currentPassword);
+      toast.success('Email updated');
       form.reset();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to update email');
@@ -234,6 +235,22 @@ const EmailForm = (): JSX.Element => {
               </>
             )}
           />
+          <Controller
+            control={form.control}
+            name="currentPassword"
+            render={({ field, fieldState }) => (
+              <>
+                <Input
+                  {...field}
+                  autoComplete="current-password"
+                  id="email-current-password"
+                  placeholder="Current password"
+                  type="password"
+                />
+                {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+              </>
+            )}
+          />
           <Button
             className="self-start"
             disabled={form.formState.isSubmitting}
@@ -252,7 +269,7 @@ const Profile = (): JSX.Element => {
   const session = useUserContext();
 
   return (
-    <div className="w-full max-w-3xl" id="profile">
+    <div className="w-full" id="profile">
       <FieldSet>
         <FieldLegend>
           <h3 className="text-xl">Profile</h3>

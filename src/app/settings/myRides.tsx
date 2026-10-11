@@ -4,12 +4,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  createFilteredRowModel,
+  createPaginatedRowModel,
+  createSortedRowModel,
+  filterFn_includesString,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_basic,
+  sortFn_datetime,
+  sortFn_text,
+  tableFeatures,
+  useTable,
 } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
@@ -46,13 +56,6 @@ import {
   InputGroupText,
 } from '@/components/ui/input-group';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -61,24 +64,39 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { ContactPlatforms } from '@/generated/prisma/enums';
 import { ungeocode } from '@/lib/maps';
 import { deletePost, fetchPosts, updatePost } from '@/lib/posts';
 
 import { useUserContext } from '../layout';
-import { FmtContactMethods } from '../posts/page';
 
 import type {
   ColumnDef,
   ColumnFiltersState,
+  ColumnVisibilityState,
+  RowSelectionState,
   SortingState,
-  VisibilityState,
 } from '@tanstack/react-table';
 import type { JSX } from 'react';
 
-import type { ContactPlatforms as ContactPlatformsType } from '@/generated/prisma/enums';
-
 import type { PostDisplay } from '../posts/page';
+
+const features = tableFeatures({
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  filteredRowModel: createFilteredRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  filterFns: { includesString: filterFn_includesString },
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    basic: sortFn_basic,
+    datetime: sortFn_datetime,
+    text: sortFn_text,
+  },
+});
 
 const editSchema = z.object({
   origin: z.string().min(1, 'Origin is required'),
@@ -86,18 +104,14 @@ const editSchema = z.object({
   departureDate: z.string().min(1, 'Departure date is required'),
   seatsAvailable: z.coerce.number().min(1).max(8),
   seatPrice: z.coerce.number().min(0),
-  contactMethod: z.string().min(1),
-  contactMethodType: z.enum(ContactPlatforms),
   comments: z.string(),
 });
 
 const EditRideDialog = ({
   post,
-  userId,
   onSuccess,
 }: {
   post: PostDisplay;
-  userId: string;
   onSuccess: () => void;
 }): JSX.Element => {
   const [open, setOpen] = useState(false);
@@ -109,22 +123,18 @@ const EditRideDialog = ({
       departureDate: format(new Date(post.departureTime), 'yyyy-MM-dd'),
       seatsAvailable: String(post.seatsAvailable),
       seatPrice: post.price,
-      contactMethod: post.contactMethod,
-      contactMethodType: post.contactPlatform,
       comments: post.notes,
     },
   });
 
   const onSubmit = async (data: z.infer<typeof editSchema>) => {
     try {
-      await updatePost(post.id, userId, {
+      await updatePost(post.id, {
         origin: data.origin,
         destination: data.destination,
         departureDate: data.departureDate,
         seatsAvailable: data.seatsAvailable,
         seatPrice: data.seatPrice,
-        contactMethod: data.contactMethod,
-        contactMethodType: data.contactMethodType,
         comments: data.comments,
       });
       toast.success('Ride updated');
@@ -225,40 +235,6 @@ const EditRideDialog = ({
                 )}
               />
             </FieldGroup>
-            <FieldGroup>
-              <FieldLabel>Contact method</FieldLabel>
-              <div className="grid grid-cols-6 gap-3">
-                <Controller
-                  control={form.control}
-                  name="contactMethod"
-                  render={({ field, fieldState }) => (
-                    <Field className="col-span-4">
-                      <Input {...field} />
-                      {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={form.control}
-                  name="contactMethodType"
-                  render={({ field, fieldState }) => (
-                    <Field className="col-span-2">
-                      <Select defaultValue={field.value} onValueChange={field.onChange} {...field}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Method" />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                          <SelectItem value={ContactPlatforms.EMAIL}>Email</SelectItem>
-                          <SelectItem value={ContactPlatforms.INSTAGRAM}>Instagram</SelectItem>
-                          <SelectItem value={ContactPlatforms.SMS}>SMS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-                    </Field>
-                  )}
-                />
-              </div>
-            </FieldGroup>
             <Controller
               control={form.control}
               name="comments"
@@ -293,11 +269,9 @@ const EditRideDialog = ({
 
 const DeleteRideDialog = ({
   postId,
-  userId,
   onSuccess,
 }: {
   postId: string;
-  userId: string;
   onSuccess: () => void;
 }): JSX.Element => {
   const [open, setOpen] = useState(false);
@@ -306,7 +280,7 @@ const DeleteRideDialog = ({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await deletePost(postId, userId);
+      await deletePost(postId);
       toast.success('Ride deleted');
       setOpen(false);
       onSuccess();
@@ -351,8 +325,8 @@ const MyRides = (): JSX.Element => {
   const [posts, setPosts] = useState<PostDisplay[]>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const fetchData = useCallback(async () => {
     if (!userCtx?.user.id) return;
@@ -397,7 +371,7 @@ const MyRides = (): JSX.Element => {
     };
   }, [fetchData]);
 
-  const columns = useMemo<ColumnDef<PostDisplay>[]>(
+  const columns = useMemo<ColumnDef<typeof features, PostDisplay>[]>(
     () => [
       {
         id: 'select',
@@ -450,16 +424,6 @@ const MyRides = (): JSX.Element => {
         cell: ({ row }) => <div>${row.getValue('price')}</div>,
       },
       {
-        accessorKey: 'contactPlatform',
-        header: 'Platform',
-        cell: ({ row }) => <div>{FmtContactMethods[row.getValue('contactPlatform')]}</div>,
-      },
-      {
-        accessorKey: 'contactMethod',
-        header: 'Contact',
-        cell: ({ row }) => <div>{row.getValue('contactMethod')}</div>,
-      },
-      {
         accessorKey: 'notes',
         header: 'Notes',
         cell: ({ row }) => <div className="max-w-32 truncate">{row.getValue('notes')}</div>,
@@ -469,41 +433,30 @@ const MyRides = (): JSX.Element => {
         header: 'Actions',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            <EditRideDialog
-              onSuccess={fetchData}
-              post={row.original}
-              userId={userCtx?.user.id ?? ''}
-            />
-            <DeleteRideDialog
-              onSuccess={fetchData}
-              postId={row.original.id}
-              userId={userCtx?.user.id ?? ''}
-            />
+            <EditRideDialog onSuccess={fetchData} post={row.original} />
+            <DeleteRideDialog onSuccess={fetchData} postId={row.original.id} />
           </div>
         ),
         enableSorting: false,
         enableHiding: false,
       },
     ],
-    [userCtx?.user.id, fetchData],
+    [fetchData],
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: posts,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: { sorting, columnFilters, columnVisibility, rowSelection },
   });
 
   return (
-    <section className="max-w-5xl" id="my-rides">
+    <section id="my-rides">
       <h3 className="text-xl mb-4">My Rides</h3>
       <div className="flex items-center py-4">
         <Input

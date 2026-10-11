@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import { ArrowRightIcon } from '@heroicons/react/24/solid';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/pagination';
 import { useSession } from '@/lib/auth-client';
 import { ungeocode } from '@/lib/maps';
+import { getOrCreateConversation } from '@/lib/messages';
 import { cn } from '@/lib/utils';
 
 import PostRideForm from './form';
@@ -44,34 +45,15 @@ import AddressSearch from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
-import type { RidePostPriceString, User } from '../../lib/posts';
+import type { RidePostPriceString } from '../../lib/posts';
 
-export interface PostDisplay
-  extends Omit<RidePostPriceString, 'destinationLat' | 'destinationLng'> {
-  creator: User;
-  price: string;
+export interface PostDisplay extends Omit<
+  RidePostPriceString,
+  'destinationLat' | 'destinationLng'
+> {
   origin: string;
   destination: string;
 }
-
-export enum FmtContactMethods {
-  INSTAGRAM = 'Instagram',
-  SMS = 'SMS',
-  EMAIL = 'Email',
-}
-
-const formatPhoneNumber = (phoneNumber: string): string => {
-  const cleaned = phoneNumber.replace(/\D/g, '');
-
-  const match = /^(\d{3})(\d{3})(\d{4})$/.exec(cleaned);
-
-  if (match) {
-    return `(${match[1]}) ${match[2]}-${match[3]}`;
-  }
-
-  // Return the original string or null if it doesn't fit the pattern
-  return '';
-};
 
 const DashboardPage = (): JSX.Element => {
   const router = useRouter();
@@ -151,7 +133,7 @@ const DashboardPage = (): JSX.Element => {
           <div className="flex gap-3 lg:items-center lg:justify-center max-w-lg">
             <AddressSearch className="w-xs" />
             <Button variant="default">Search</Button>
-            <PostRideForm user={session.user} />
+            <PostRideForm />
           </div>
         </div>
       </header>
@@ -232,17 +214,20 @@ const DashboardPage = (): JSX.Element => {
                 </section>
                 <DialogFooter>
                   <Button
-                    onClick={() =>
-                      toast(
-                        `You can contact ${item.contactPlatform === 'SMS' ? formatPhoneNumber(item.contactMethod) : item.contactMethod} on ${FmtContactMethods[item.contactPlatform]}`,
-                        {
-                          action: {
-                            label: 'Copy',
-                            onClick: async () => navigator.clipboard.writeText(item.contactMethod),
-                          },
-                        },
-                      )
-                    }
+                    disabled={item.creator.id === session.user.id}
+                    onClick={async () => {
+                      try {
+                        const conversationId = await getOrCreateConversation(
+                          item.creator.id,
+                          item.id,
+                        );
+                        router.push(`/messages?conversation=${conversationId}`);
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error ? err.message : 'Could not open conversation',
+                        );
+                      }
+                    }}
                   >
                     Send a message
                   </Button>
@@ -280,4 +265,10 @@ const DashboardPage = (): JSX.Element => {
   );
 };
 
-export default DashboardPage;
+const Page = (): JSX.Element => (
+  <Suspense fallback={<p className="text-center mt-8">Loading...</p>}>
+    <DashboardPage />
+  </Suspense>
+);
+
+export default Page;

@@ -3,48 +3,26 @@
 import { RideStatus } from '@/generated/prisma/enums';
 import { geocode } from '@/lib/maps';
 import prisma from '@/lib/prisma';
+import { requireUser } from '@/lib/session';
+import { publishPostSchema, updatePostSchema } from '@/lib/validation';
 
 import type { RidePost } from '@/generated/prisma/client';
-import type { ContactPlatforms } from '@/generated/prisma/enums';
 import type { RidePostWhereInput } from '@/generated/prisma/models';
+import type { PublishPostInput, UpdatePostInput } from '@/lib/validation';
 
-export interface User {
+/** The subset of a user that is safe to expose to other users. */
+export interface PublicUser {
   id: string;
-  createdAt: Date;
-  updatedAt: Date;
-  email: string;
-  emailVerified: boolean;
   name: string;
-  image?: string | null | undefined;
-}
-
-export interface PublishPostForm {
-  origin: string;
-  destination: string;
-  departureDate: string;
-  seatsAvailable: number;
-  seatPrice: number;
-  contactMethod: string;
-  contactMethodType: string;
-  comments: string;
-}
-
-export interface UpdatePostForm {
-  origin?: string;
-  destination?: string;
-  departureDate?: string;
-  seatsAvailable?: number;
-  seatPrice?: number;
-  contactMethod?: string;
-  contactMethodType?: string;
-  comments?: string;
-  status?: RideStatus;
+  image: string | null;
 }
 
 export interface RidePostPriceString extends Omit<RidePost, 'price'> {
-  creator: User;
+  creator: PublicUser;
   price: string;
 }
+
+const publicUserSelect = { id: true, name: true, image: true } as const;
 
 export async function fetchPosts(opts: {
   page: number;
@@ -58,8 +36,10 @@ export async function fetchPosts(opts: {
   total: number;
   totalPages: number;
 }> {
-  const pageSize = opts.pageSize ?? 12;
-  const page = Math.max(1, opts.page);
+  await requireUser();
+
+  const pageSize = Math.min(Math.max(1, opts.pageSize ?? 12), 50);
+  const page = Math.max(1, Math.floor(opts.page) || 1);
   const skip = (page - 1) * pageSize;
   const where: RidePostWhereInput = {
     ...(opts.rideStatus !== 'ALL' && { status: opts.rideStatus }),
@@ -69,7 +49,7 @@ export async function fetchPosts(opts: {
   const [posts, total] = await Promise.all([
     prisma.ridePost.findMany({
       where,
-      include: { creator: true },
+      include: { creator: { select: publicUserSelect } },
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
@@ -90,19 +70,19 @@ export async function fetchPosts(opts: {
 }
 
 export async function publishPost(
-  user: User,
-  data: PublishPostForm,
+  input: PublishPostInput,
 ): Promise<Omit<RidePostPriceString, 'creator'>> {
-  const geocodedOrigin = await geocode(data.origin);
-  const geocodedDestination = await geocode(data.destination);
+  const user = await requireUser();
+  const data = publishPostSchema.parse(input);
+
+  const [geocodedOrigin, geocodedDestination] = await Promise.all([
+    geocode(data.origin),
+    geocode(data.destination),
+  ]);
 
   const post = await prisma.ridePost.create({
     data: {
-      creator: {
-        connect: {
-          id: user.id,
-        },
-      },
+      creator: { connect: { id: user.id } },
 
       originLat: geocodedOrigin.lat,
       originLng: geocodedOrigin.lng,
@@ -113,10 +93,7 @@ export async function publishPost(
       seatsAvailable: data.seatsAvailable,
       seatsTaken: 0,
 
-      contactMethod: data.contactMethod,
-      contactPlatform: data.contactMethodType as ContactPlatforms,
-
-      notes: data.comments ?? 'N/A',
+      notes: data.comments || 'N/A',
       price: data.seatPrice,
 
       status: RideStatus.OPEN,
@@ -129,14 +106,17 @@ export async function publishPost(
   };
 }
 
-export async function updatePost(id: string, userId: string, data: UpdatePostForm): Promise<void> {
+export async function updatePost(id: string, input: UpdatePostInput): Promise<void> {
+  const user = await requireUser();
+  const data = updatePostSchema.parse(input);
+
   const [geocodedOrigin, geocodedDestination] = await Promise.all([
     data.origin ? geocode(data.origin) : Promise.resolve(null),
     data.destination ? geocode(data.destination) : Promise.resolve(null),
   ]);
 
   await prisma.ridePost.update({
-    where: { id, creatorId: userId },
+    where: { id, creatorId: user.id },
     data: {
       ...(geocodedOrigin && { originLat: geocodedOrigin.lat, originLng: geocodedOrigin.lng }),
       ...(geocodedDestination && {
@@ -146,19 +126,17 @@ export async function updatePost(id: string, userId: string, data: UpdatePostFor
       ...(data.departureDate && { departureTime: new Date(data.departureDate) }),
       ...(data.seatsAvailable !== undefined && { seatsAvailable: data.seatsAvailable }),
       ...(data.seatPrice !== undefined && { price: data.seatPrice }),
-      ...(data.contactMethod && { contactMethod: data.contactMethod }),
-      ...(data.contactMethodType && {
-        contactPlatform: data.contactMethodType as ContactPlatforms,
-      }),
-      ...(data.comments && { notes: data.comments }),
+      ...(data.comments !== undefined && { notes: data.comments || 'N/A' }),
       ...(data.status && { status: data.status }),
       lastEditedAt: new Date(),
     },
   });
 }
 
-export async function deletePost(id: string, userId: string): Promise<void> {
+export async function deletePost(id: string): Promise<void> {
+  const user = await requireUser();
+
   await prisma.ridePost.delete({
-    where: { id, creatorId: userId },
+    where: { id, creatorId: user.id },
   });
 }

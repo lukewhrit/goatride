@@ -4,16 +4,28 @@ import { headers } from 'next/headers';
 
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { requireUser } from '@/lib/session';
 
-export async function changeEmail(newEmail: string): Promise<void> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error('Not authenticated');
+/**
+ * Changes the signed-in user's email. Requires the current password so a hijacked session alone
+ * can't be used to take over the account.
+ */
+// eslint-disable-next-line import-x/prefer-default-export
+export async function changeEmail(newEmail: string, currentPassword: string): Promise<void> {
+  const user = await requireUser();
 
-  const existing = await prisma.user.findUnique({ where: { email: newEmail } });
-  if (existing) throw new Error('Email is already in use');
+  const account = await prisma.account.findFirst({
+    where: { userId: user.id, providerId: 'credential' },
+    select: { password: true },
+  });
+  const ctx = await auth.$context;
+  const valid =
+    !!account?.password &&
+    (await ctx.password.verify({ hash: account.password, password: currentPassword }));
+  if (!valid) throw new Error('Current password is incorrect');
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { email: newEmail },
+  await auth.api.changeEmail({
+    body: { newEmail },
+    headers: await headers(),
   });
 }
