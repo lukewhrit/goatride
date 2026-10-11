@@ -4,6 +4,7 @@ import './globals.css';
 import Footer from '@/app/ui/footer';
 import { Navbar } from '@/app/ui/navbar';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 import Providers from './providers';
 
@@ -44,6 +45,7 @@ const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.
         <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
       </Providers>
       <Analytics />
+      <SpeedInsights />
     </body>
   </html>
 );
