@@ -197,7 +197,8 @@ const Home = (): JSX.Element => (
         </div>
       </div>
     </section>
-    <section className="md:px-5 xl:px-15 grid items-center gap-8 md:grid-cols-2">
+    {/* About Us Section - commented out until its ready */}
+    {/* <section className="md:px-5 xl:px-15 grid items-center gap-8 md:grid-cols-2">
       <div className="flex flex-col">
         <h1 className="my-6 text-2xl font-bold text-pretty lg:text-4xl">About Us</h1>
         <p className="mb-8 max-w-lg text-muted-foreground">
@@ -215,7 +216,7 @@ const Home = (): JSX.Element => (
         className="max-h-96 w-full rounded-md object-cover"
         src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/placeholder-1.svg"
       />
-    </section>
+    </section> */}
   </main>
 );
 
