@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "agent-email-inbox": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/agent-email-inbox/SKILL.md",
+      "computedHash": "c3a58e2de0f249fae2fcf2cb93c3bee8fe5694b10af45ee745423c7ff3215198"
+    },
+    "email-best-practices": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/email-best-practices/SKILL.md",
+      "computedHash": "4c26ca203af6b3df259621544b09a9b28183b9ead10897b7315225e87dd012d5"
+    },
     "prisma-orm-setup": {
       "source": "prisma/skills",
       "sourceType": "github",
@@ -12,6 +24,24 @@
       "sourceType": "github",
       "skillPath": "prisma-postgres-setup/SKILL.md",
       "computedHash": "3e70e8932984c62055ccf24e6cfce24d796bc2dd769497e26ea73971fe403920"
+    },
+    "react-email": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-email/SKILL.md",
+      "computedHash": "ff40e3355c318e5ef203eb1118cab574454ce65dae01bb268b05a2e244b8041b"
+    },
+    "resend": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/resend/SKILL.md",
+      "computedHash": "82b26e4f038c5dc4f5e6d94e83ceb09b655418919845ae4a2e7c5496d2c1b01f"
+    },
+    "resend-cli": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/resend-cli/SKILL.md",
+      "computedHash": "e82822f03b86adbee741f50b51213abc16be70af8a784c7b65667982ad320128"
     }
   }
 }

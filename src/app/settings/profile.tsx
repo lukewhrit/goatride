@@ -253,7 +253,7 @@ const EmailForm = (): JSX.Element => {
     }
     try {
       await changeEmail(data.email, data.currentPassword);
-      toast.success('Email updated');
+      toast.success('Check your inbox to confirm the change');
       form.reset();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to update email');

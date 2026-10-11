@@ -7,8 +7,9 @@ import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 
 /**
- * Changes the signed-in user's email. Requires the current password so a hijacked session alone
- * can't be used to take over the account.
+ * Starts an email change for the signed-in user. Requires the current password so a hijacked
+ * session alone can't be used to take over the account. The change only takes effect once the
+ * emailed link is followed (see changeEmail in lib/auth.ts).
  */
 // eslint-disable-next-line import-x/prefer-default-export
 export async function changeEmail(newEmail: string, currentPassword: string): Promise<void> {
@@ -25,7 +26,7 @@ export async function changeEmail(newEmail: string, currentPassword: string): Pr
   if (!valid) throw new Error('Current password is incorrect');
 
   await auth.api.changeEmail({
-    body: { newEmail },
+    body: { newEmail, callbackURL: '/settings' },
     headers: await headers(),
   });
 }

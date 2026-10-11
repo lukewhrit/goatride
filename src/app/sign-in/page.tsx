@@ -85,6 +85,9 @@ const SignInPage = (): JSX.Element => {
                     placeholder="Password"
                     type="password"
                   />
+                  <FieldDescription>
+                    <a href="/forgot-password">Forgot password?</a>
+                  </FieldDescription>
                 </Field>
                 <FieldGroup>
                   <Field>
