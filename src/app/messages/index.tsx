@@ -219,14 +219,14 @@ const MessagesPage = (): JSX.Element => {
   const selectedConversation = conversations.find((c) => c.id === selectedId);
 
   return (
-    <div className="flex h-[calc(100dvh-73px)] text-white overflow-hidden">
+    <div className="flex h-[calc(100dvh-73px)] text-white overflow-hidden border-t border-neutral-800">
       <aside
         className={cn(
           'w-full md:w-72 shrink-0 border-r border-neutral-800 flex flex-col',
           selectedId ? 'hidden md:flex' : 'flex',
         )}
       >
-        <div className="px-4 py-3 border-b border-neutral-800 shrink-0">
+        <div className="px-4 py-3 shrink-0">
           <h1 className="text-xl font-semibold">Messages</h1>
         </div>
 
@@ -279,7 +279,7 @@ const MessagesPage = (): JSX.Element => {
               {selectedConversation ? (
                 <>
                   <UserAvatar size="sm" user={selectedConversation.otherUser} />
-                  <span className="font-medium">{selectedConversation.otherUser.name}</span>
+                  <span className="font-xl">{selectedConversation.otherUser.name}</span>
                 </>
               ) : (
                 <div className="size-8 rounded-full bg-neutral-700 animate-pulse" />
