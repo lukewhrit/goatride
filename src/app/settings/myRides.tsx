@@ -66,7 +66,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { deletePost, fetchPosts, updatePost } from '@/lib/posts';
 
-import { useUserContext } from '../layout';
+import { useUserContext } from '../providers';
 
 import type {
   ColumnDef,
@@ -77,7 +77,7 @@ import type {
 } from '@tanstack/react-table';
 import type { JSX } from 'react';
 
-import type { PostDisplay } from '../posts/page';
+import type { RidePostListItem as PostDisplay } from '@/lib/posts';
 
 const features = tableFeatures({
   columnFilteringFeature,

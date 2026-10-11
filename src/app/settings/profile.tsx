@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
 import { changeEmail } from '@/lib/user';
 
-import { useUserContext } from '../layout';
+import { useUserContext } from '../providers';
 
 import type { JSX } from 'react';
 

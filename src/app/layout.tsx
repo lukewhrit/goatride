@@ -1,41 +1,20 @@
-'use client';
-
 /* eslint-disable import-x/order */
-import ThemeProvider from '@/components/theme';
-
 import './globals.css';
 
 import Footer from '@/app/ui/footer';
 import { Navbar } from '@/app/ui/navbar';
-import { Toaster } from '@/components/ui/sonner';
 
-import type { User } from 'better-auth';
+import Providers from './providers';
 
-import { createContext, useContext } from 'react';
-
+import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
 import type { NavbarProps } from './ui/navbar';
 
-import { useSession } from '@/lib/auth-client';
-
-interface UserSession {
-  user: User;
-  session: {
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    userId: string;
-    expiresAt: Date;
-    token: string;
-    ipAddress?: string | null | undefined;
-    userAgent?: string | null | undefined;
-  };
-}
-
-const userCtx = createContext<UserSession | undefined>(undefined);
-
-export const useUserContext = (): UserSession | undefined => useContext(userCtx);
+export const metadata: Metadata = {
+  title: 'GoatRide',
+  description: 'Find, share, and join rides with people on your campus.',
+};
 
 const navItems: NavbarProps = {
   logo: {
@@ -55,28 +34,16 @@ const navItems: NavbarProps = {
   },
 };
 
-const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => {
-  const { data: session } = useSession();
-
-  return (
-    <html suppressHydrationWarning lang="en">
-      <body className="font-sans antialiased">
-        <userCtx.Provider value={session as UserSession | undefined}>
-          <ThemeProvider
-            disableTransitionOnChange
-            enableSystem
-            attribute="class"
-            defaultTheme="system"
-          >
-            <Toaster closeButton position="top-center" />
-            <Navbar auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
-            <div>{children}</div>
-            <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
-          </ThemeProvider>
-        </userCtx.Provider>
-      </body>
-    </html>
-  );
-};
+const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => (
+  <html suppressHydrationWarning lang="en">
+    <body className="font-sans antialiased">
+      <Providers>
+        <Navbar auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
+        <div>{children}</div>
+        <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
+      </Providers>
+    </body>
+  </html>
+);
 
 export default RootLayout;

@@ -60,7 +60,7 @@ const PostRideForm = (): JSX.Element => {
       const post = await publishPost(data);
 
       setOpen(false);
-      router.refresh();
+      // New URL → the server page re-renders with the new post first in the list
       router.push(`/posts?highlight=${post.id}`);
     } catch (e) {
       console.error(e);

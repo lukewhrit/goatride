@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
-import { useUserContext } from './layout';
+import { useUserContext } from './providers';
 
 import type { LucideIcon } from 'lucide-react';
 import type { ComponentProps, JSX } from 'react';
