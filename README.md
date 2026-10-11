@@ -11,6 +11,7 @@ The application was built by students using Next.JS and TypeScript, with Prisma 
 - [GoatRide](#goatride)
   - [Table of Contents](#table-of-contents)
   - [Development](#development)
+  - [Deployment](#deployment)
   - [Contributing](#contributing)
   - [Credits](#credits)
   - [Vulnerabilities](#vulnerabilities)
@@ -28,6 +29,18 @@ pnpm dev
 ```
 
 Before opening a PR, run `pnpm lint`, `pnpm typecheck`, and `pnpm test`. CI runs these plus a migration check and a production build.
+
+## Deployment
+
+GoatRide is deployed on Vercel, with Postgres from Neon and avatar storage in Vercel Blob (both added through the Vercel Marketplace), and a daily Vercel Cron job that expires past rides.
+
+One-time setup in the Vercel project:
+
+1. **Storage → Create → Neon**, connected to all environments. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED`. Turn on Neon's preview branching so preview deployments get their own database branch; otherwise they run migrations against production.
+2. **Storage → Create → Blob**. This sets `BLOB_READ_WRITE_TOKEN`.
+3. **Settings → Environment Variables**: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (production only, `https://<your domain>`), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `GOOGLE_MAPS_SERVER_KEY`, and `CRON_SECRET`.
+
+Every build runs `prisma migrate deploy` before `next build`, so pushing to `main` applies pending migrations and deploys.
 
 ## Contributing
 

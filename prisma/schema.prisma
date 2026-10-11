@@ -116,7 +116,7 @@ model RidePost {
   destinationLng Float
 
   // Display names ("Worcester, MA") saved at write time so listing posts needs no geocoding.
-  // Nullable only for rows created before these columns existed; see scripts/backfill-place-names.ts
+  // Nullable only for rows created before these columns existed
   originName      String?
   destinationName String?
 

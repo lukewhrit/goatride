@@ -118,14 +118,4 @@ export default [
       'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
     },
   },
-  {
-    files: ['scripts/**'],
-    rules: {
-      // One-off scripts run sequentially and log progress
-      'no-console': 'off',
-      'no-restricted-syntax': 'off',
-      'no-await-in-loop': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'off',
-    },
-  },
 ];

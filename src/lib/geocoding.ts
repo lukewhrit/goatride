@@ -1,20 +1,32 @@
-import { Client, PlaceType2 } from '@googlemaps/google-maps-services-js';
-
-import type { AddressComponent, LatLngLiteral } from '@googlemaps/google-maps-services-js';
-
 /*
  * Raw Google Geocoding calls with no session check. Only import this from server code that has
- * already authenticated the caller (server actions) or from trusted scripts; the browser-callable
- * wrapper lives in `@/lib/maps`.
+ * already authenticated the caller (server actions); the browser-callable wrapper lives in
+ * `@/lib/maps`. Plain fetch rather than Google's SDK: it's two query params and no extra dependency.
  */
 
-const client = new Client({});
+const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 
 export const UNKNOWN_PLACE = 'Unknown location';
 
-export interface GeocodedPlace extends LatLngLiteral {
+export interface GeocodedPlace {
+  lat: number;
+  lng: number;
   /** Short display name, e.g. "Worcester, MA". */
   name: string;
+}
+
+interface AddressComponent {
+  short_name: string;
+  types: string[];
+}
+
+interface GeocodeResponse {
+  status: string;
+  error_message?: string;
+  results: {
+    address_components: AddressComponent[];
+    geometry: { location: { lat: number; lng: number } };
+  }[];
 }
 
 /*
@@ -31,27 +43,31 @@ const apiKey = (): string => {
 };
 
 const placeName = (components: AddressComponent[] | undefined): string => {
-  const town = components?.find((e) => e.types.includes(PlaceType2.locality));
-  const state = components?.find((e) => e.types.includes(PlaceType2.administrative_area_level_1));
+  const town = components?.find((e) => e.types.includes('locality'));
+  const state = components?.find((e) => e.types.includes('administrative_area_level_1'));
 
   return [town?.short_name, state?.short_name].filter(Boolean).join(', ') || UNKNOWN_PLACE;
 };
 
 export async function geocodeAddress(address: string): Promise<GeocodedPlace> {
-  const res = await client.geocode({
-    params: { key: apiKey(), address },
-  });
+  const url = new URL(GEOCODE_URL);
+  url.searchParams.set('address', address);
+  url.searchParams.set('key', apiKey());
 
-  const result = res.data.results[0];
-  if (!result) throw new Error(`Could not find a location for "${address}"`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Geocoding request failed (${res.status})`);
+
+  // Google reports most failures (bad key, quota) as HTTP 200 with a non-OK status
+  const data = (await res.json()) as GeocodeResponse;
+  const result = data.results[0];
+  if (data.status === 'ZERO_RESULTS' || (data.status === 'OK' && !result)) {
+    throw new Error(`Could not find a location for "${address}"`);
+  }
+  if (data.status !== 'OK' || !result) {
+    throw new Error(
+      `Geocoding failed: ${data.status}${data.error_message ? ` (${data.error_message})` : ''}`,
+    );
+  }
 
   return { ...result.geometry.location, name: placeName(result.address_components) };
-}
-
-export async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  const res = await client.reverseGeocode({
-    params: { key: apiKey(), latlng: { lat, lng } },
-  });
-
-  return placeName(res.data.results[0]?.address_components);
 }

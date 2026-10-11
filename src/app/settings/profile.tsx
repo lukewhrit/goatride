@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +22,8 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { authClient } from '@/lib/auth-client';
+import { authClient, useSession } from '@/lib/auth-client';
+import { uploadAvatar } from '@/lib/avatars';
 import { changeEmail } from '@/lib/user';
 
 import { useUserContext } from '../providers';
@@ -50,41 +51,95 @@ const emailSchema = z
     path: ['confirmEmail'],
   });
 
+const AVATAR_SIZE = 256;
+
+/*
+ * Center-crops and scales an image to a small square in the browser, so uploads stay tiny and the
+ * server (a Worker, which can't run image libraries like sharp) only has to store bytes.
+ */
+const resizeAvatar = async (file: File): Promise<Blob> => {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = AVATAR_SIZE;
+  canvas.height = AVATAR_SIZE;
+  canvas
+    .getContext('2d')
+    ?.drawImage(
+      bitmap,
+      (bitmap.width - side) / 2,
+      (bitmap.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      AVATAR_SIZE,
+      AVATAR_SIZE,
+    );
+  bitmap.close();
+
+  // Browsers that can't encode WebP fall back to PNG, which the server also accepts
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not process image'))),
+      'image/webp',
+      0.85,
+    );
+  });
+};
+
 const AvatarUpload = (): JSX.Element => {
   const session = useUserContext();
+  const { refetch } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(session?.user.image ?? null);
+  const [pending, setPending] = useState<{ blob: Blob; url: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const preview = pending?.url ?? session?.user.image ?? null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Release the object URL of a discarded or saved preview
+  useEffect(
+    () => () => {
+      if (pending) URL.revokeObjectURL(pending.url);
+    },
+    [pending],
+  );
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be under 2 MB');
-      return;
-    }
     if (!file.type.startsWith('image/')) {
       toast.error('File must be an image');
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be under 10 MB');
+      return;
+    }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPreview(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const blob = await resizeAvatar(file);
+      setPending({ blob, url: URL.createObjectURL(blob) });
+    } catch {
+      toast.error('Could not read that image');
+    }
   };
 
   const handleSave = async () => {
-    if (!preview || preview === session?.user.image) return;
+    if (!pending) return;
     setLoading(true);
-    const { error } = await authClient.updateUser({ image: preview });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message ?? 'Failed to update avatar');
-    } else {
+    try {
+      const formData = new FormData();
+      formData.set('avatar', pending.blob, 'avatar');
+      await uploadAvatar(formData);
+      await refetch();
+      setPending(null);
       toast.success('Avatar updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update avatar');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,7 +147,7 @@ const AvatarUpload = (): JSX.Element => {
     <Field orientation="responsive">
       <FieldContent>
         <FieldLabel>Avatar</FieldLabel>
-        <FieldDescription>Upload a profile picture (max 2 MB).</FieldDescription>
+        <FieldDescription>Upload a profile picture (max 10 MB).</FieldDescription>
       </FieldContent>
       <div className="flex items-center gap-4">
         <button
@@ -118,7 +173,7 @@ const AvatarUpload = (): JSX.Element => {
           >
             Choose image
           </Button>
-          {preview && preview !== session?.user.image ? (
+          {pending ? (
             <Button disabled={loading} onClick={handleSave} size="sm" type="button">
               {loading ? 'Saving…' : 'Save avatar'}
             </Button>
