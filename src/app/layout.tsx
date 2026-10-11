@@ -3,6 +3,7 @@ import './globals.css';
 
 import Footer from '@/app/ui/footer';
 import { Navbar } from '@/app/ui/navbar';
+import { Analytics } from '@vercel/analytics/next';
 
 import Providers from './providers';
 
@@ -42,6 +43,7 @@ const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.
         <div>{children}</div>
         <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
       </Providers>
+      <Analytics />
     </body>
   </html>
 );
