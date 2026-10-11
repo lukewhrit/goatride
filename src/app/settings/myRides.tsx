@@ -64,7 +64,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { ungeocode } from '@/lib/maps';
 import { deletePost, fetchPosts, updatePost } from '@/lib/posts';
 
 import { useUserContext } from '../layout';
@@ -338,25 +337,7 @@ const MyRides = (): JSX.Element => {
       ownerId: userCtx.user.id,
     });
 
-    const enriched = await Promise.all(
-      p.items.map(async (post) => {
-        try {
-          const [origin, destination] = await Promise.all([
-            post.originLat != null && post.originLng != null
-              ? ungeocode(post.originLat, post.originLng)
-              : Promise.resolve('Unknown'),
-            post.destinationLat != null && post.destinationLng != null
-              ? ungeocode(post.destinationLat, post.destinationLng)
-              : Promise.resolve('Unknown'),
-          ]);
-          return { ...post, origin, destination };
-        } catch {
-          return { ...post, origin: 'Unknown', destination: 'Unknown' };
-        }
-      }),
-    );
-
-    setPosts(enriched);
+    setPosts(p.items);
   }, [userCtx?.user.id]);
 
   useEffect(() => {

@@ -40,7 +40,12 @@ model TwoFactor {
   userId      String
   user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
   @@index([userId])
+  @@index([secret])
   @@map("twoFactor")
 }
 
@@ -109,6 +114,11 @@ model RidePost {
   originLng      Float
   destinationLat Float
   destinationLng Float
+
+  // Display names ("Worcester, MA") saved at write time so listing posts needs no geocoding.
+  // Nullable only for rows created before these columns existed; see scripts/backfill-place-names.ts
+  originName      String?
+  destinationName String?
 
   departureTime  DateTime
   seatsAvailable Int

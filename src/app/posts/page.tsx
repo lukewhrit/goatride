@@ -35,7 +35,6 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { useSession } from '@/lib/auth-client';
-import { ungeocode } from '@/lib/maps';
 import { getOrCreateConversation } from '@/lib/messages';
 import { cn } from '@/lib/utils';
 
@@ -45,15 +44,9 @@ import AddressSearch from '../ui/placeSearch';
 
 import type { JSX } from 'react';
 
-import type { RidePostPriceString } from '../../lib/posts';
+import type { RidePostListItem } from '../../lib/posts';
 
-export interface PostDisplay extends Omit<
-  RidePostPriceString,
-  'destinationLat' | 'destinationLng'
-> {
-  origin: string;
-  destination: string;
-}
+export type PostDisplay = RidePostListItem;
 
 const DashboardPage = (): JSX.Element => {
   const router = useRouter();
@@ -77,28 +70,9 @@ const DashboardPage = (): JSX.Element => {
     async function fetchData() {
       const p = await fetchPosts({ page: currentPage, pageSize: 12, rideStatus: 'OPEN' });
 
+      if (cancelled) return;
       setTotalPages(p.totalPages);
-
-      const enriched = await Promise.all(
-        p.items.map(async (post) => {
-          try {
-            const destination =
-              post.destinationLat != null && post.destinationLng != null
-                ? await ungeocode(post.destinationLat, post.destinationLng)
-                : 'Unknown destination';
-            const origin =
-              post.originLat != null && post.originLng != null
-                ? await ungeocode(post.originLat, post.originLng)
-                : 'Unknown destination';
-
-            return { ...post, origin, destination };
-          } catch {
-            return { ...post, origin: 'Unknown destination', destination: 'Unknown destination' };
-          }
-        }),
-      );
-
-      if (!cancelled) setPosts(enriched);
+      setPosts(p.items);
     }
 
     fetchData().catch((e) => console.error(e));

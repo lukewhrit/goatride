@@ -1,7 +1,7 @@
 'use server';
 
 import { RideStatus } from '@/generated/prisma/enums';
-import { geocode } from '@/lib/maps';
+import { geocodeAddress, UNKNOWN_PLACE } from '@/lib/geocoding';
 import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 import { publishPostSchema, updatePostSchema } from '@/lib/validation';
@@ -22,6 +22,12 @@ export interface RidePostPriceString extends Omit<RidePost, 'price'> {
   price: string;
 }
 
+/** A listed post with display names resolved, ready to render without any geocoding. */
+export interface RidePostListItem extends RidePostPriceString {
+  origin: string;
+  destination: string;
+}
+
 const publicUserSelect = { id: true, name: true, image: true } as const;
 
 export async function fetchPosts(opts: {
@@ -30,7 +36,7 @@ export async function fetchPosts(opts: {
   rideStatus: RideStatus | 'ALL';
   ownerId?: string;
 }): Promise<{
-  items: RidePostPriceString[];
+  items: RidePostListItem[];
   page: number;
   pageSize: number;
   total: number;
@@ -61,6 +67,8 @@ export async function fetchPosts(opts: {
     items: posts.map((post) => ({
       ...post,
       price: post.price?.toString() ?? '0',
+      origin: post.originName ?? UNKNOWN_PLACE,
+      destination: post.destinationName ?? UNKNOWN_PLACE,
     })),
     page,
     pageSize,
@@ -76,8 +84,8 @@ export async function publishPost(
   const data = publishPostSchema.parse(input);
 
   const [geocodedOrigin, geocodedDestination] = await Promise.all([
-    geocode(data.origin),
-    geocode(data.destination),
+    geocodeAddress(data.origin),
+    geocodeAddress(data.destination),
   ]);
 
   const post = await prisma.ridePost.create({
@@ -88,6 +96,8 @@ export async function publishPost(
       originLng: geocodedOrigin.lng,
       destinationLat: geocodedDestination.lat,
       destinationLng: geocodedDestination.lng,
+      originName: geocodedOrigin.name,
+      destinationName: geocodedDestination.name,
 
       departureTime: new Date(data.departureDate),
       seatsAvailable: data.seatsAvailable,
@@ -111,17 +121,22 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<vo
   const data = updatePostSchema.parse(input);
 
   const [geocodedOrigin, geocodedDestination] = await Promise.all([
-    data.origin ? geocode(data.origin) : Promise.resolve(null),
-    data.destination ? geocode(data.destination) : Promise.resolve(null),
+    data.origin ? geocodeAddress(data.origin) : Promise.resolve(null),
+    data.destination ? geocodeAddress(data.destination) : Promise.resolve(null),
   ]);
 
   await prisma.ridePost.update({
     where: { id, creatorId: user.id },
     data: {
-      ...(geocodedOrigin && { originLat: geocodedOrigin.lat, originLng: geocodedOrigin.lng }),
+      ...(geocodedOrigin && {
+        originLat: geocodedOrigin.lat,
+        originLng: geocodedOrigin.lng,
+        originName: geocodedOrigin.name,
+      }),
       ...(geocodedDestination && {
         destinationLat: geocodedDestination.lat,
         destinationLng: geocodedDestination.lng,
+        destinationName: geocodedDestination.name,
       }),
       ...(data.departureDate && { departureTime: new Date(data.departureDate) }),
       ...(data.seatsAvailable !== undefined && { seatsAvailable: data.seatsAvailable }),

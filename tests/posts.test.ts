@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { prisma, requireUser, geocode } = vi.hoisted(() => ({
+const { prisma, requireUser, geocodeAddress } = vi.hoisted(() => ({
   prisma: {
     ridePost: {
       findMany: vi.fn(),
@@ -11,12 +11,12 @@ const { prisma, requireUser, geocode } = vi.hoisted(() => ({
     },
   },
   requireUser: vi.fn(),
-  geocode: vi.fn(),
+  geocodeAddress: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({ default: prisma }));
 vi.mock('@/lib/session', () => ({ requireUser }));
-vi.mock('@/lib/maps', () => ({ geocode }));
+vi.mock('@/lib/geocoding', () => ({ geocodeAddress, UNKNOWN_PLACE: 'Unknown location' }));
 
 // eslint-disable-next-line import-x/first
 import { deletePost, fetchPosts, publishPost, updatePost } from '@/lib/posts';
@@ -25,7 +25,11 @@ const me = { id: 'user-me', name: 'Me', email: 'me@wpi.edu' };
 
 beforeEach(() => {
   requireUser.mockResolvedValue(me);
-  geocode.mockResolvedValue({ lat: 42.27, lng: -71.8 });
+  geocodeAddress.mockImplementation(async (address: string) => ({
+    lat: 42.27,
+    lng: -71.8,
+    name: address,
+  }));
 });
 
 describe('ride post actions require a session', () => {
@@ -69,6 +73,22 @@ describe('fetchPosts', () => {
     expect(res.pageSize).toBe(50);
     expect(res.totalPages).toBe(1);
   });
+
+  it('returns stored place names without geocoding', async () => {
+    prisma.ridePost.findMany.mockResolvedValue([
+      { id: 'a', price: null, originName: 'Worcester, MA', destinationName: 'Boston, MA' },
+      { id: 'b', price: null, originName: null, destinationName: null },
+    ]);
+    prisma.ridePost.count.mockResolvedValue(2);
+
+    const { items } = await fetchPosts({ page: 1, rideStatus: 'OPEN' });
+
+    expect(items.map((p) => [p.origin, p.destination])).toEqual([
+      ['Worcester, MA', 'Boston, MA'],
+      ['Unknown location', 'Unknown location'],
+    ]);
+    expect(geocodeAddress).not.toHaveBeenCalled();
+  });
 });
 
 describe('publishPost', () => {
@@ -87,6 +107,8 @@ describe('publishPost', () => {
     const { data } = prisma.ridePost.create.mock.calls[0][0];
     expect(data.creator).toEqual({ connect: { id: me.id } });
     expect(data.notes).toBe('N/A');
+    expect(data.originName).toBe('Worcester, MA');
+    expect(data.destinationName).toBe('Boston, MA');
   });
 
   it('rejects invalid input before touching the database', async () => {
@@ -99,7 +121,7 @@ describe('publishPost', () => {
         seatPrice: 0,
       }),
     ).rejects.toThrow();
-    expect(geocode).not.toHaveBeenCalled();
+    expect(geocodeAddress).not.toHaveBeenCalled();
     expect(prisma.ridePost.create).not.toHaveBeenCalled();
   });
 });
@@ -112,6 +134,16 @@ describe('updatePost / deletePost', () => {
     expect(args.where).toEqual({ id: 'post-1', creatorId: me.id });
     expect(args.data.seatsAvailable).toBe(3);
     expect(args.data).not.toHaveProperty('notes');
+    expect(args.data).not.toHaveProperty('originName');
+    expect(geocodeAddress).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the stored place name when a location changes', async () => {
+    await updatePost('post-1', { destination: 'Providence, RI' });
+
+    const { data } = prisma.ridePost.update.mock.calls[0][0];
+    expect(data.destinationName).toBe('Providence, RI');
+    expect(data).not.toHaveProperty('originName');
   });
 
   it('ignores any extra user id smuggled in by the client', async () => {
