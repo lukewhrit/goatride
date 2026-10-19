@@ -1,5 +1,6 @@
 'use server';
 
+import { UNKNOWN_PLACE } from './geocoding';
 import prisma from './prisma';
 import { requireUser } from './session';
 
@@ -9,6 +10,18 @@ export interface ConversationUser {
   image: string | null;
 }
 
+/** The ride a conversation was started from, shown at the top of the thread. */
+export interface ConversationRide {
+  id: string;
+  creatorId: string;
+  origin: string;
+  destination: string;
+  departureTime: Date;
+  seatsAvailable: number;
+  price: string;
+  status: string;
+}
+
 export interface ConversationPreview {
   id: string;
   otherUser: ConversationUser;
@@ -16,6 +29,7 @@ export interface ConversationPreview {
   lastMessageAt: Date | null;
   isUnread: boolean;
   ridePostId: string | null;
+  ride: ConversationRide | null;
 }
 
 export interface MessageData {
@@ -39,6 +53,18 @@ export async function getConversations(): Promise<ConversationPreview[]> {
             include: { user: { select: { id: true, name: true, image: true } } },
             take: 1,
           },
+          ridePost: {
+            select: {
+              id: true,
+              creatorId: true,
+              originName: true,
+              destinationName: true,
+              departureTime: true,
+              seatsAvailable: true,
+              price: true,
+              status: true,
+            },
+          },
         },
       },
     },
@@ -50,6 +76,7 @@ export async function getConversations(): Promise<ConversationPreview[]> {
   return participants.map((p: ParticipantRow) => {
     const lastMsg = p.conversation.messages[0] ?? null;
     const other = p.conversation.participants[0]?.user;
+    const ride = p.conversation.ridePost;
     const isUnread =
       !!lastMsg &&
       lastMsg.senderId !== user.id &&
@@ -62,6 +89,18 @@ export async function getConversations(): Promise<ConversationPreview[]> {
       lastMessageAt: lastMsg?.createdAt ?? null,
       isUnread,
       ridePostId: p.conversation.ridePostId,
+      ride: ride
+        ? {
+            id: ride.id,
+            creatorId: ride.creatorId,
+            origin: ride.originName ?? UNKNOWN_PLACE,
+            destination: ride.destinationName ?? UNKNOWN_PLACE,
+            departureTime: ride.departureTime,
+            seatsAvailable: ride.seatsAvailable,
+            price: ride.price?.toString() ?? '0',
+            status: ride.status,
+          }
+        : null,
     };
   });
 }

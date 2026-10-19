@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ArrowLeftIcon, PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import { ArrowLeftIcon, ArrowRightIcon, PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { format, isToday, isYesterday } from 'date-fns';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 
 import type { JSX } from 'react';
 
-import type { ConversationPreview, MessageData } from '@/lib/messages';
+import type { ConversationPreview, ConversationRide, MessageData } from '@/lib/messages';
 
 const formatTimestamp = (date: Date): string => {
   if (isToday(date)) return format(date, 'h:mm a');
@@ -91,6 +91,36 @@ const ConversationItem = ({
       </div>
     </div>
   </button>
+);
+
+/*
+ * Rendered like the opening message: conversations about a ride are started by whoever messaged
+ * its creator, so it sits on the non-creator's side.
+ */
+const RideSummary = ({ ride, isOwn }: { ride: ConversationRide; isOwn: boolean }): JSX.Element => (
+  <div className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
+    <section
+      className={cn(
+        'max-w-[72%] rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-sm',
+        isOwn ? 'rounded-br-sm' : 'rounded-bl-sm',
+      )}
+    >
+      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+        About this ride
+      </p>
+      <div className="flex items-center gap-2 font-semibold">
+        <span className="truncate">{ride.origin}</span>
+        <ArrowRightIcon className="size-3.5 shrink-0 text-neutral-400" />
+        <span className="truncate">{ride.destination}</span>
+      </div>
+      <p className="mt-1 text-neutral-400">
+        {format(new Date(ride.departureTime), 'EEE, MMM d · h:mm a')} · {ride.seatsAvailable} seat
+        {ride.seatsAvailable === 1 ? '' : 's'}
+        {ride.price === '0' ? ' · Free' : ` · $${ride.price}/seat`}
+        {ride.status === 'OPEN' ? '' : ` · ${ride.status.toLowerCase()}`}
+      </p>
+    </section>
+  </div>
 );
 
 const MessageBubble = ({
@@ -302,6 +332,12 @@ const MessagesPage = (): JSX.Element => {
               ref={messagesContainerRef}
               className="flex-1 overflow-y-auto p-4 flex flex-col gap-2"
             >
+              {selectedConversation?.ride ? (
+                <RideSummary
+                  isOwn={selectedConversation.ride.creatorId !== session.user.id}
+                  ride={selectedConversation.ride}
+                />
+              ) : null}
               {loadingMsgs ? (
                 <p className="text-center text-neutral-400 text-sm">Loading…</p>
               ) : null}
