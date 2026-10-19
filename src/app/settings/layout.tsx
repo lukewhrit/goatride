@@ -55,8 +55,8 @@ const sections: Section[] = [
     ],
   },
   {
-    key: 'password-and-security',
-    title: 'Password and security',
+    key: 'privacy-and-security',
+    title: 'Privacy and security',
     items: [{ key: 'password', title: 'Change password', url: '#password' }],
   },
 ];
@@ -122,7 +122,7 @@ const DeleteAccountDialog = (): JSX.Element => {
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger asChild>
-        <Button className="bg-red-500 text-white hover:bg-red-600">Delete Account</Button>
+        <Button variant="destructive">Delete Account</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -210,6 +210,7 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
           </SidebarContent>
           <SidebarFooter>
             <Button
+              variant="default"
               onClick={async () => {
                 await signOut();
                 router.push('/');

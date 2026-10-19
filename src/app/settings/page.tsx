@@ -13,9 +13,6 @@ const SettingsPage = (): JSX.Element => (
       <h2 className="text-2xl">Preferences</h2>
       <Profile />
       <MyRides />
-    </section>
-    <section className="space-y-8" id="privacy-and-security">
-      <h2 className="text-2xl">Privacy and security</h2>
       <ChangePassword />
     </section>
   </main>

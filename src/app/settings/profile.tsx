@@ -11,6 +11,15 @@ import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -29,6 +38,7 @@ import { changeEmail } from '@/lib/user';
 import { useUserContext } from '../providers';
 
 import type { JSX } from 'react';
+import type { FieldErrors } from 'react-hook-form';
 
 const formatStringToUuid = (str: string): string => {
   const cleanStr = str.replace(/-/g, '').substring(0, 32);
@@ -44,7 +54,6 @@ const emailSchema = z
   .object({
     email: z.string().email('Invalid email address'),
     confirmEmail: z.string().email('Invalid email address'),
-    currentPassword: z.string().min(1, 'Current password is required'),
   })
   .refine((d) => d.email === d.confirmEmail, {
     message: 'Emails do not match',
@@ -214,7 +223,7 @@ const NameForm = (): JSX.Element => {
           <FieldLabel htmlFor="name">Name</FieldLabel>
           <FieldDescription>Your display name shown on ride listings.</FieldDescription>
         </FieldContent>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col space-y-2">
           <Controller
             control={form.control}
             name="name"
@@ -226,7 +235,7 @@ const NameForm = (): JSX.Element => {
             )}
           />
           <Button
-            className="self-start"
+            className="self-end w-1/2"
             disabled={form.formState.isSubmitting}
             size="sm"
             type="submit"
@@ -243,80 +252,125 @@ const EmailForm = (): JSX.Element => {
   const session = useUserContext();
   const form = useForm({
     resolver: zodResolver(emailSchema),
-    defaultValues: { email: '', confirmEmail: '', currentPassword: '' },
+    defaultValues: { email: '', confirmEmail: '' },
   });
+  // Set once the email fields validate; opens the dialog asking for the current password
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [confirming, setConfirming] = useState(false);
 
-  const onSubmit = async (data: z.infer<typeof emailSchema>) => {
+  const onSubmit = (data: z.infer<typeof emailSchema>) => {
     if (data.email === session?.user.email) {
       toast.error('New email must be different from current email');
       return;
     }
+    setPendingEmail(data.email);
+  };
+
+  const onInvalid = (errors: FieldErrors<z.infer<typeof emailSchema>>) => {
+    const message = errors.email?.message ?? errors.confirmEmail?.message;
+    if (message) toast.error(message);
+  };
+
+  const closeDialog = () => {
+    setPendingEmail(null);
+    setCurrentPassword('');
+  };
+
+  const onConfirm = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!pendingEmail || !currentPassword) return;
+    setConfirming(true);
     try {
-      await changeEmail(data.email, data.currentPassword);
+      await changeEmail(pendingEmail, currentPassword);
       toast.success('Check your inbox to confirm the change');
+      closeDialog();
       form.reset();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update email');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update email');
+      setCurrentPassword('');
+    } finally {
+      setConfirming(false);
     }
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Field orientation="responsive">
-        <FieldContent>
-          <FieldLabel>Email</FieldLabel>
-          <FieldDescription>
-            Current: <span className="font-mono">{session?.user.email}</span>
-          </FieldDescription>
-        </FieldContent>
-        <div className="flex flex-col gap-2">
-          <Controller
-            control={form.control}
-            name="email"
-            render={({ field, fieldState }) => (
-              <>
-                <Input {...field} id="email" placeholder="New email address" type="email" />
-                {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-              </>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="confirmEmail"
-            render={({ field, fieldState }) => (
-              <>
-                <Input {...field} id="confirm-email" placeholder="Confirm new email" type="email" />
-                {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-              </>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="currentPassword"
-            render={({ field, fieldState }) => (
-              <>
+    <>
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        <Field orientation="responsive">
+          <FieldContent>
+            <FieldLabel>Email</FieldLabel>
+            <FieldDescription>
+              Current: <span className="font-mono">{session?.user.email}</span>
+            </FieldDescription>
+          </FieldContent>
+          <div className="gap-2 grid grid-cols-2">
+            <Controller
+              control={form.control}
+              name="email"
+              render={({ field, fieldState }) => (
                 <Input
                   {...field}
-                  autoComplete="current-password"
-                  id="email-current-password"
-                  placeholder="Current password"
-                  type="password"
+                  aria-invalid={fieldState.invalid}
+                  id="email"
+                  placeholder="New email address"
+                  type="email"
                 />
-                {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
-              </>
-            )}
-          />
-          <Button
-            className="self-start"
-            disabled={form.formState.isSubmitting}
-            size="sm"
-            type="submit"
-          >
-            {form.formState.isSubmitting ? 'Saving…' : 'Save email'}
-          </Button>
-        </div>
-      </Field>
-    </form>
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="confirmEmail"
+              render={({ field, fieldState }) => (
+                <Input
+                  {...field}
+                  aria-invalid={fieldState.invalid}
+                  id="confirm-email"
+                  placeholder="Confirm new email"
+                  type="email"
+                />
+              )}
+            />
+            <Button className="col-span-2 justify-self-end" size="sm" type="submit">
+              Save email
+            </Button>
+          </div>
+        </Field>
+      </form>
+      {/* Kept outside the form above so its submit event doesn't bubble into it */}
+      <Dialog onOpenChange={(open) => (open ? null : closeDialog())} open={pendingEmail !== null}>
+        <DialogContent className="sm:max-w-md">
+          <form className="grid gap-4" onSubmit={onConfirm}>
+            <DialogHeader>
+              <DialogTitle>Confirm your password</DialogTitle>
+              <DialogDescription>
+                Enter your current password to change your email to{' '}
+                <span className="font-mono">{pendingEmail}</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <Input
+              autoFocus
+              autoComplete="current-password"
+              id="email-current-password"
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Current password"
+              type="password"
+              value={currentPassword}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button disabled={confirming || !currentPassword} type="submit">
+                {confirming ? 'Saving…' : 'Change email'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
