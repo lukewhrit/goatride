@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useSession } from '@/lib/auth-client';
+import { MESSAGES_READ_EVENT } from '@/lib/messageEvents';
 import { getConversations, getMessages, sendMessage } from '@/lib/messages';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +65,7 @@ const ConversationItem = ({
     onClick={onClick}
     type="button"
     className={cn(
-      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors text-white',
+      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors text-white hover:cursor-pointer',
       isSelected ? 'bg-neutral-800' : 'hover:bg-neutral-800/50',
     )}
   >
@@ -171,7 +172,10 @@ const MessagesPage = (): JSX.Element => {
       return undefined;
     }
     setLoadingMsgs(true);
-    fetchMessages(selectedId).finally(() => setLoadingMsgs(false));
+    fetchMessages(selectedId).finally(() => {
+      setLoadingMsgs(false);
+      window.dispatchEvent(new Event(MESSAGES_READ_EVENT));
+    });
     const interval = setInterval(async () => fetchMessages(selectedId), 3000);
     return () => clearInterval(interval);
   }, [selectedId, fetchMessages]);

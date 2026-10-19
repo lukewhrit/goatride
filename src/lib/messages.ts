@@ -66,6 +66,27 @@ export async function getConversations(): Promise<ConversationPreview[]> {
   });
 }
 
+/** Number of messages from other people sent after the user last read each conversation. */
+export async function getUnreadMessageCount(): Promise<number> {
+  const user = await requireUser();
+
+  const participants = await prisma.conversationParticipant.findMany({
+    where: { userId: user.id },
+    select: { conversationId: true, lastReadAt: true },
+  });
+  if (participants.length === 0) return 0;
+
+  return prisma.message.count({
+    where: {
+      senderId: { not: user.id },
+      OR: participants.map((p) => ({
+        conversationId: p.conversationId,
+        ...(p.lastReadAt ? { createdAt: { gt: p.lastReadAt } } : {}),
+      })),
+    },
+  });
+}
+
 export async function getMessages(conversationId: string): Promise<MessageData[]> {
   const user = await requireUser();
 
