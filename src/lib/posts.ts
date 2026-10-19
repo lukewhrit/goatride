@@ -120,6 +120,19 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<vo
   const user = await requireUser();
   const data = updatePostSchema.parse(input);
 
+  // Riders who already joined keep their seats
+  if (data.seatsAvailable !== undefined) {
+    const current = await prisma.ridePost.findUnique({
+      where: { id, creatorId: user.id },
+      select: { seatsTaken: true },
+    });
+    if (current && data.seatsAvailable < current.seatsTaken) {
+      throw new Error(
+        `${current.seatsTaken} ${current.seatsTaken === 1 ? 'rider has' : 'riders have'} already joined this ride`,
+      );
+    }
+  }
+
   const [geocodedOrigin, geocodedDestination] = await Promise.all([
     data.origin ? geocodeAddress(data.origin) : Promise.resolve(null),
     data.destination ? geocodeAddress(data.destination) : Promise.resolve(null),
@@ -146,6 +159,29 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<vo
       lastEditedAt: new Date(),
     },
   });
+
+  // Keep OPEN/FULL in step with the new seat count (an explicit status change wins)
+  if (data.seatsAvailable !== undefined && !data.status) {
+    const { seatsTaken } = prisma.ridePost.fields;
+    await prisma.ridePost.updateMany({
+      where: {
+        id,
+        creatorId: user.id,
+        status: RideStatus.OPEN,
+        seatsAvailable: { lte: seatsTaken },
+      },
+      data: { status: RideStatus.FULL },
+    });
+    await prisma.ridePost.updateMany({
+      where: {
+        id,
+        creatorId: user.id,
+        status: RideStatus.FULL,
+        seatsAvailable: { gt: seatsTaken },
+      },
+      data: { status: RideStatus.OPEN },
+    });
+  }
 }
 
 export async function deletePost(id: string): Promise<void> {

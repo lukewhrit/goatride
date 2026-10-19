@@ -2,7 +2,10 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: 'upload.wikimedia.org' }],
+    // Avatars are public Vercel Blob URLs (see src/lib/avatarStorage.ts)
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com', pathname: '/avatars/**' },
+    ],
   },
 };
 

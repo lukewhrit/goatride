@@ -28,6 +28,7 @@ model User {
   twoFactor        TwoFactor[]
   conversations    ConversationParticipant[]
   messages         Message[]
+  rides            RidePassenger[]
 
   @@unique([email])
   @@map("user")
@@ -104,6 +105,28 @@ enum RideStatus {
   COMPLETED
 }
 
+enum PassengerStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+}
+
+// Riders join a ride by accepting an invite the driver sends from their conversation. Only
+// ACCEPTED rows hold a seat (counted in RidePost.seatsTaken); leaving or being removed deletes the row.
+model RidePassenger {
+  ridePostId String
+  userId     String
+  status     PassengerStatus @default(INVITED)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  ridePost   RidePost        @relation(fields: [ridePostId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ridePostId, userId])
+  @@index([userId])
+  @@map("ride_passenger")
+}
+
 model RidePost {
   id String @id @default(uuid())
 
@@ -134,6 +157,7 @@ model RidePost {
   lastEditedAt DateTime?
 
   conversations Conversation[]
+  passengers    RidePassenger[]
 
   @@index([creatorId])
   @@index([departureTime])

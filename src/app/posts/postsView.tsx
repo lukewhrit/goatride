@@ -137,8 +137,8 @@ const PostsView = ({
                   </DialogDescription>
                 </DialogHeader>
                 <section className="flex flex-col gap-3">
-                  <section className="bg-neutral-900 p-3 rounded-md border">
-                    <div className="flex gap-3 justify-center items-center font-bold text-xl">
+                  <section className="bg-neutral-50 dark:bg-neutral-900 p-3 rounded-md border">
+                    <div className="flex gap-3 justify-center items-center font-bold text-xl text-black dark:text-white">
                       <span>{item.origin}</span>
                       <ArrowRightIcon className="text-center h-4" />
                       <span>{item.destination}</span>
@@ -149,8 +149,8 @@ const PostsView = ({
                     <section>
                       <h2 className="text-md font-bold mb-0.5">Seats Available</h2>
                       <p>
-                        {item.seatsAvailable} seat
-                        {item.seatsAvailable === 1 ? '' : 's'} available
+                        {item.seatsAvailable - item.seatsTaken} of {item.seatsAvailable} seat
+                        {item.seatsAvailable === 1 ? '' : 's'} left
                         {item.price !== '0' ? <span> at ${item.price} per seat</span> : ''}.
                       </p>
                     </section>

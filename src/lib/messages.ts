@@ -1,12 +1,30 @@
 'use server';
 
+import { UNKNOWN_PLACE } from './geocoding';
 import prisma from './prisma';
 import { requireUser } from './session';
+
+import type { PassengerStatus } from '@/generated/prisma/enums';
 
 export interface ConversationUser {
   id: string;
   name: string;
   image: string | null;
+}
+
+/** The ride a conversation was started from, shown at the top of the thread. */
+export interface ConversationRide {
+  id: string;
+  creatorId: string;
+  origin: string;
+  destination: string;
+  departureTime: Date;
+  seatsAvailable: number;
+  seatsTaken: number;
+  price: string;
+  status: string;
+  /** Where the non-driver participant stands with this ride; null if never invited. */
+  passengerStatus: PassengerStatus | null;
 }
 
 export interface ConversationPreview {
@@ -16,6 +34,7 @@ export interface ConversationPreview {
   lastMessageAt: Date | null;
   isUnread: boolean;
   ridePostId: string | null;
+  ride: ConversationRide | null;
 }
 
 export interface MessageData {
@@ -39,6 +58,20 @@ export async function getConversations(): Promise<ConversationPreview[]> {
             include: { user: { select: { id: true, name: true, image: true } } },
             take: 1,
           },
+          ridePost: {
+            select: {
+              id: true,
+              creatorId: true,
+              originName: true,
+              destinationName: true,
+              departureTime: true,
+              seatsAvailable: true,
+              seatsTaken: true,
+              price: true,
+              status: true,
+              passengers: { select: { userId: true, status: true } },
+            },
+          },
         },
       },
     },
@@ -50,6 +83,8 @@ export async function getConversations(): Promise<ConversationPreview[]> {
   return participants.map((p: ParticipantRow) => {
     const lastMsg = p.conversation.messages[0] ?? null;
     const other = p.conversation.participants[0]?.user;
+    const ride = p.conversation.ridePost;
+    const riderId = ride?.creatorId === user.id ? other?.id : user.id;
     const isUnread =
       !!lastMsg &&
       lastMsg.senderId !== user.id &&
@@ -62,7 +97,42 @@ export async function getConversations(): Promise<ConversationPreview[]> {
       lastMessageAt: lastMsg?.createdAt ?? null,
       isUnread,
       ridePostId: p.conversation.ridePostId,
+      ride: ride
+        ? {
+            id: ride.id,
+            creatorId: ride.creatorId,
+            origin: ride.originName ?? UNKNOWN_PLACE,
+            destination: ride.destinationName ?? UNKNOWN_PLACE,
+            departureTime: ride.departureTime,
+            seatsAvailable: ride.seatsAvailable,
+            seatsTaken: ride.seatsTaken,
+            price: ride.price?.toString() ?? '0',
+            status: ride.status,
+            passengerStatus: ride.passengers.find((r) => r.userId === riderId)?.status ?? null,
+          }
+        : null,
     };
+  });
+}
+
+/** Number of messages from other people sent after the user last read each conversation. */
+export async function getUnreadMessageCount(): Promise<number> {
+  const user = await requireUser();
+
+  const participants = await prisma.conversationParticipant.findMany({
+    where: { userId: user.id },
+    select: { conversationId: true, lastReadAt: true },
+  });
+  if (participants.length === 0) return 0;
+
+  return prisma.message.count({
+    where: {
+      senderId: { not: user.id },
+      OR: participants.map((p) => ({
+        conversationId: p.conversationId,
+        ...(p.lastReadAt ? { createdAt: { gt: p.lastReadAt } } : {}),
+      })),
+    },
   });
 }
 

@@ -23,10 +23,10 @@ const SignInPage = (): JSX.Element => {
     }
   }, [isPending, session, router]);
 
-  if (isPending) return <p className="text-center mt-8 text-white">Loading...</p>;
-  if (session?.user) return <p className="text-center mt-8 text-white">Redirecting...</p>;
+  if (isPending) return <p className="text-center mt-8">Loading...</p>;
+  if (session?.user) return <p className="text-center mt-8">Redirecting...</p>;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
@@ -45,7 +45,7 @@ const SignInPage = (): JSX.Element => {
   }
 
   return (
-    <main className="grid grid-cols-2 mx-auto p-6 space-y-4 h-[80vh]">
+    <main className="grid md:grid-cols-2 mx-auto p-6 md:gap-2 h-[80vh]">
       <section className="flex flex-col justify-center items-center">
         <div className="max-w-md">
           <h1 className="text-3xl mb-2 font-bold">Welcome back</h1>
@@ -56,8 +56,8 @@ const SignInPage = (): JSX.Element => {
         </div>
         {error ? <p className="text-red-500">{error}</p> : null}
       </section>
-      <section className="flex flex-col justify-center">
-        <Card className="max-w-md">
+      <section className="flex flex-col items-center justify-center">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Sign in to your account</CardTitle>
             <CardDescription>Enter your information below to access your account.</CardDescription>

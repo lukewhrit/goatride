@@ -36,8 +36,8 @@ const SignUpPage = (): JSX.Element => {
     }
   }, [isPending, session, router]);
 
-  if (isPending) return <p className="text-center mt-8 text-white">Loading...</p>;
-  if (session?.user) return <p className="text-center mt-8 text-white">Redirecting...</p>;
+  if (isPending) return <p className="text-center mt-8">Loading...</p>;
+  if (session?.user) return <p className="text-center mt-8">Redirecting...</p>;
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     const res = await signUp.email({
@@ -54,7 +54,7 @@ const SignUpPage = (): JSX.Element => {
   }
 
   return (
-    <main className="grid grid-cols-2 mx-auto p-6 space-y-4 h-[80vh]">
+    <main className="grid md:grid-cols-2 mx-auto p-6 md:gap-2 h-[80vh]">
       <section className="flex flex-col justify-center items-center">
         <div className="max-w-md">
           <h1 className="text-3xl mb-2 font-bold">Create An Account</h1>
@@ -64,8 +64,8 @@ const SignUpPage = (): JSX.Element => {
           </p>
         </div>
       </section>
-      <section className="flex flex-col justify-center">
-        <Card className="max-w-md">
+      <section className="flex flex-col justify-center items-center">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Create an account</CardTitle>
             <CardDescription>Enter your information below to create an account.</CardDescription>

@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import DefaultAvatar from '@/components/defaultAvatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -55,8 +57,8 @@ const sections: Section[] = [
     ],
   },
   {
-    key: 'password-and-security',
-    title: 'Password and security',
+    key: 'privacy-and-security',
+    title: 'Privacy and security',
     items: [{ key: 'password', title: 'Change password', url: '#password' }],
   },
 ];
@@ -122,7 +124,7 @@ const DeleteAccountDialog = (): JSX.Element => {
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger asChild>
-        <Button className="bg-red-500 text-white hover:bg-red-600">Delete Account</Button>
+        <Button variant="destructive">Delete Account</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -158,8 +160,8 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
     }
   }, [isPending, session, router]);
 
-  if (isPending) return <p className="text-center mt-8 text-white">Loading…</p>;
-  if (!session?.user) return <p className="text-center mt-8 text-white">Redirecting…</p>;
+  if (isPending) return <p className="text-center mt-8">Loading…</p>;
+  if (!session?.user) return <p className="text-center mt-8">Redirecting…</p>;
 
   return (
     <div>
@@ -170,7 +172,17 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
               <SidebarMenuItem>
                 <div className="flex p-1 gap-3 items-center">
                   <div className="flex overflow-hidden aspect-square size-8 items-center justify-center rounded-full">
-                    <img alt="Avatar" className="w-full h-full" src={session?.user.image ?? ''} />
+                    {session.user.image ? (
+                      <Image
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                        height={32}
+                        src={session.user.image}
+                        width={32}
+                      />
+                    ) : (
+                      <DefaultAvatar />
+                    )}
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span>{session.user.name || 'No Name'}</span>
@@ -210,6 +222,7 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
           </SidebarContent>
           <SidebarFooter>
             <Button
+              variant="default"
               onClick={async () => {
                 await signOut();
                 router.push('/');
@@ -220,7 +233,7 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
             <DeleteAccountDialog />
           </SidebarFooter>
         </Sidebar>
-        <main className="w-full h-screen space-y-4 text-white">{children}</main>
+        <main className="w-full h-screen space-y-4">{children}</main>
       </SidebarProvider>
     </div>
   );
