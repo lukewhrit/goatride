@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 // eslint-disable-next-line import-x/no-namespace
 import * as z from 'zod';
 
+import DefaultAvatar from '@/components/defaultAvatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -168,9 +168,7 @@ const AvatarUpload = (): JSX.Element => {
             // eslint-disable-next-line @next/next/no-img-element
             <img alt="Avatar" className="w-full h-full object-cover" src={preview} />
           ) : (
-            <div className="w-full h-full bg-neutral-700 flex items-center justify-center">
-              <UserCircleIcon className="w-10 h-10 text-neutral-400" />
-            </div>
+            <DefaultAvatar />
           )}
         </button>
         <div className="flex flex-col gap-2">

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const navItems: NavbarProps = {
   logo: {
     url: '/',
-    src: 'https://upload.wikimedia.org/wikipedia/en/4/49/WPI_Engineers_primary_logo.svg',
+    src: '/wpi-logo.svg',
     alt: 'logo',
     title: 'GoatRide',
   },

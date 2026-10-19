@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ArrowLeftIcon, PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { format, isToday, isYesterday } from 'date-fns';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -37,7 +38,13 @@ const UserAvatar = ({
     )}
   >
     {user.image ? (
-      <img alt={user.name} className="w-full h-full object-cover" src={user.image} />
+      <Image
+        alt={user.name}
+        className="w-full h-full object-cover"
+        height={size === 'md' ? 40 : 32}
+        src={user.image}
+        width={size === 'md' ? 40 : 32}
+      />
     ) : (
       <span>{user.name.charAt(0).toUpperCase()}</span>
     )}

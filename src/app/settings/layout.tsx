@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import DefaultAvatar from '@/components/defaultAvatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -170,7 +172,17 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
               <SidebarMenuItem>
                 <div className="flex p-1 gap-3 items-center">
                   <div className="flex overflow-hidden aspect-square size-8 items-center justify-center rounded-full">
-                    <img alt="Avatar" className="w-full h-full" src={session?.user.image ?? ''} />
+                    {session.user.image ? (
+                      <Image
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                        height={32}
+                        src={session.user.image}
+                        width={32}
+                      />
+                    ) : (
+                      <DefaultAvatar />
+                    )}
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span>{session.user.name || 'No Name'}</span>

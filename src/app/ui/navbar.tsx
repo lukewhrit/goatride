@@ -4,6 +4,7 @@ import { Bars3Icon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import DefaultAvatar from '@/components/defaultAvatar';
 import { Accordion } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,7 +73,7 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
           <div className="flex items-center gap-6">
             {/* Logo */}
             <a className="flex items-center gap-2" href={logo.url}>
-              <Image alt={logo.alt} height={32} src={logo.src} width={32} />
+              <Image preload alt={logo.alt} height={32} src={logo.src} width={32} />
               <span className="text-lg font-semibold tracking-tighter">{logo.title}</span>
             </a>
             <div className="flex items-center">
@@ -100,7 +101,17 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
               >
                 <Link href="/settings">
                   <div className="flex overflow-hidden aspect-square size-8 items-center justify-center rounded-full">
-                    <img alt="Avatar" className="w-full h-full" src={session?.user.image ?? ''} />
+                    {session.user.image ? (
+                      <Image
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                        height={32}
+                        src={session.user.image}
+                        width={32}
+                      />
+                    ) : (
+                      <DefaultAvatar />
+                    )}
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-medium">{session?.user.name ?? 'User'}</span>
