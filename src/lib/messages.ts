@@ -1,10 +1,13 @@
 'use server';
 
+import { toResult, UserError } from './actionResult';
 import { UNKNOWN_PLACE } from './geocoding';
 import prisma from './prisma';
 import { requireUser } from './session';
 
 import type { PassengerStatus } from '@/generated/prisma/enums';
+
+import type { ActionResult } from './actionResult';
 
 export interface ConversationUser {
   id: string;
@@ -159,77 +162,89 @@ export async function getMessages(conversationId: string): Promise<MessageData[]
   return messages;
 }
 
-export async function sendMessage(conversationId: string, content: string): Promise<MessageData> {
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+): Promise<ActionResult<MessageData>> {
   const user = await requireUser();
-  const trimmed = content.trim();
-  if (!trimmed) throw new Error('Message cannot be empty');
-  if (trimmed.length > 2000) throw new Error('Message too long');
 
-  const participant = await prisma.conversationParticipant.findUnique({
-    where: { conversationId_userId: { conversationId, userId: user.id } },
-  });
-  if (!participant) throw new Error('Not a participant');
+  return toResult(async () => {
+    const trimmed = content.trim();
+    if (!trimmed) throw new UserError('Message cannot be empty');
+    if (trimmed.length > 2000) throw new UserError('Message is too long (2,000 characters max)');
 
-  const [message] = await prisma.$transaction([
-    prisma.message.create({
-      data: { conversationId, senderId: user.id, content: trimmed },
-      select: { id: true, senderId: true, content: true, createdAt: true },
-    }),
-    prisma.conversation.update({
-      where: { id: conversationId },
-      data: { updatedAt: new Date() },
-    }),
-    prisma.conversationParticipant.update({
+    const participant = await prisma.conversationParticipant.findUnique({
       where: { conversationId_userId: { conversationId, userId: user.id } },
-      data: { lastReadAt: new Date() },
-    }),
-  ]);
+    });
+    if (!participant) throw new Error('Not a participant');
 
-  return message;
+    const [message] = await prisma.$transaction([
+      prisma.message.create({
+        data: { conversationId, senderId: user.id, content: trimmed },
+        select: { id: true, senderId: true, content: true, createdAt: true },
+      }),
+      prisma.conversation.update({
+        where: { id: conversationId },
+        data: { updatedAt: new Date() },
+      }),
+      prisma.conversationParticipant.update({
+        where: { conversationId_userId: { conversationId, userId: user.id } },
+        data: { lastReadAt: new Date() },
+      }),
+    ]);
+
+    return message;
+  });
 }
 
 export async function getOrCreateConversation(
   otherUserId: string,
   ridePostId?: string,
-): Promise<string> {
+): Promise<ActionResult<string>> {
   const user = await requireUser();
-  if (user.id === otherUserId) throw new Error('Cannot message yourself');
 
-  const other = await prisma.user.findUnique({ where: { id: otherUserId }, select: { id: true } });
-  if (!other) throw new Error('User not found');
-  if (ridePostId) {
-    const post = await prisma.ridePost.findUnique({
-      where: { id: ridePostId },
-      select: { creatorId: true },
+  return toResult(async () => {
+    if (user.id === otherUserId) throw new UserError('You cannot message yourself');
+
+    const other = await prisma.user.findUnique({
+      where: { id: otherUserId },
+      select: { id: true },
     });
-    if (!post || (post.creatorId !== otherUserId && post.creatorId !== user.id)) {
-      throw new Error('Ride not found');
+    if (!other) throw new UserError('That user no longer exists');
+    if (ridePostId) {
+      const post = await prisma.ridePost.findUnique({
+        where: { id: ridePostId },
+        select: { creatorId: true },
+      });
+      if (!post || (post.creatorId !== otherUserId && post.creatorId !== user.id)) {
+        throw new UserError('That ride no longer exists');
+      }
     }
-  }
 
-  const existing = await prisma.conversation.findFirst({
-    where: {
-      ridePostId: ridePostId ?? null,
-      AND: [
-        { participants: { some: { userId: user.id } } },
-        { participants: { some: { userId: otherUserId } } },
-        { participants: { every: { userId: { in: [user.id, otherUserId] } } } },
-      ],
-    },
-    select: { id: true },
-  });
-
-  if (existing) return existing.id;
-
-  const created = await prisma.conversation.create({
-    data: {
-      ridePostId: ridePostId ?? null,
-      participants: {
-        create: [{ userId: user.id }, { userId: otherUserId }],
+    const existing = await prisma.conversation.findFirst({
+      where: {
+        ridePostId: ridePostId ?? null,
+        AND: [
+          { participants: { some: { userId: user.id } } },
+          { participants: { some: { userId: otherUserId } } },
+          { participants: { every: { userId: { in: [user.id, otherUserId] } } } },
+        ],
       },
-    },
-    select: { id: true },
-  });
+      select: { id: true },
+    });
 
-  return created.id;
+    if (existing) return existing.id;
+
+    const created = await prisma.conversation.create({
+      data: {
+        ridePostId: ridePostId ?? null,
+        participants: {
+          create: [{ userId: user.id }, { userId: otherUserId }],
+        },
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  });
 }

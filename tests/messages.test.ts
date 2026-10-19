@@ -16,6 +16,8 @@ vi.mock('@/lib/prisma', () => ({ default: prisma }));
 vi.mock('@/lib/session', () => ({ requireUser }));
 
 // eslint-disable-next-line import-x/first
+import { unwrap } from '@/lib/actionResult';
+// eslint-disable-next-line import-x/first
 import { getMessages, getOrCreateConversation, sendMessage } from '@/lib/messages';
 
 const me = { id: 'user-me', name: 'Me', email: 'me@wpi.edu' };
@@ -26,14 +28,14 @@ beforeEach(() => {
 
 describe('sendMessage', () => {
   it('rejects empty and overlong messages', async () => {
-    await expect(sendMessage('c1', '   ')).rejects.toThrow('empty');
-    await expect(sendMessage('c1', 'x'.repeat(2001))).rejects.toThrow('too long');
+    await expect(unwrap(sendMessage('c1', '   '))).rejects.toThrow('empty');
+    await expect(unwrap(sendMessage('c1', 'x'.repeat(2001)))).rejects.toThrow('too long');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects users who are not in the conversation', async () => {
     prisma.conversationParticipant.findUnique.mockResolvedValue(null);
-    await expect(sendMessage('c1', 'hi')).rejects.toThrow('Not a participant');
+    await expect(unwrap(sendMessage('c1', 'hi'))).rejects.toThrow('Not a participant');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
@@ -47,18 +49,20 @@ describe('getMessages', () => {
 
 describe('getOrCreateConversation', () => {
   it('refuses to message yourself', async () => {
-    await expect(getOrCreateConversation(me.id)).rejects.toThrow('yourself');
+    await expect(unwrap(getOrCreateConversation(me.id))).rejects.toThrow('yourself');
   });
 
   it('refuses unknown users', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    await expect(getOrCreateConversation('ghost')).rejects.toThrow('User not found');
+    await expect(unwrap(getOrCreateConversation('ghost'))).rejects.toThrow('no longer exists');
   });
 
   it('refuses to attach a ride that neither participant owns', async () => {
     prisma.user.findUnique.mockResolvedValue({ id: 'other' });
     prisma.ridePost.findUnique.mockResolvedValue({ creatorId: 'someone-else' });
-    await expect(getOrCreateConversation('other', 'ride-1')).rejects.toThrow('Ride not found');
+    await expect(unwrap(getOrCreateConversation('other', 'ride-1'))).rejects.toThrow(
+      'ride no longer exists',
+    );
     expect(prisma.conversation.create).not.toHaveBeenCalled();
   });
 
@@ -67,7 +71,7 @@ describe('getOrCreateConversation', () => {
     prisma.ridePost.findUnique.mockResolvedValue({ creatorId: 'other' });
     prisma.conversation.findFirst.mockResolvedValue({ id: 'existing' });
 
-    await expect(getOrCreateConversation('other', 'ride-1')).resolves.toBe('existing');
+    await expect(unwrap(getOrCreateConversation('other', 'ride-1'))).resolves.toBe('existing');
     expect(prisma.conversation.create).not.toHaveBeenCalled();
   });
 
@@ -76,7 +80,7 @@ describe('getOrCreateConversation', () => {
     prisma.conversation.findFirst.mockResolvedValue(null);
     prisma.conversation.create.mockResolvedValue({ id: 'new' });
 
-    await expect(getOrCreateConversation('other')).resolves.toBe('new');
+    await expect(unwrap(getOrCreateConversation('other'))).resolves.toBe('new');
     expect(prisma.conversation.create.mock.calls[0][0].data.participants).toEqual({
       create: [{ userId: me.id }, { userId: 'other' }],
     });

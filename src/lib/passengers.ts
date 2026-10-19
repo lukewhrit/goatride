@@ -1,10 +1,12 @@
 'use server';
 
 import { PassengerStatus, RideStatus } from '@/generated/prisma/enums';
+import { toResult, UserError } from '@/lib/actionResult';
 import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 
 import type { Prisma } from '@/generated/prisma/client';
+import type { ActionResult } from '@/lib/actionResult';
 import type { PublicUser } from '@/lib/posts';
 
 /*
@@ -30,9 +32,9 @@ async function loadRideConversation(conversationId: string, userId: string) {
   }
 
   const ride = conversation.ridePost;
-  if (!ride) throw new Error('This conversation is not about a ride');
+  if (!ride) throw new UserError('This conversation is not about a ride');
   const riderId = conversation.participants.find((p) => p.userId !== ride.creatorId)?.userId;
-  if (!riderId) throw new Error('This conversation has no rider');
+  if (!riderId) throw new UserError('This conversation has no rider');
 
   return { ride, driverId: ride.creatorId, riderId };
 }
@@ -61,7 +63,7 @@ async function takeSeat(tx: Tx, ridePostId: string) {
     },
     data: { seatsTaken: { increment: 1 } },
   });
-  if (count === 0) throw new Error('This ride has no seats left');
+  if (count === 0) throw new UserError('This ride has no seats left');
 
   await tx.ridePost.updateMany({
     where: {
@@ -89,98 +91,114 @@ async function releaseSeat(tx: Tx, ridePostId: string) {
 }
 
 /** Driver only: invites the other participant of a ride conversation to the ride. */
-export async function invitePassenger(conversationId: string): Promise<void> {
+export async function invitePassenger(conversationId: string): Promise<ActionResult<void>> {
   const user = await requireUser();
-  const { ride, driverId, riderId } = await loadRideConversation(conversationId, user.id);
-  if (user.id !== driverId) throw new Error('Only the driver can invite riders');
-  if (ride.status !== RideStatus.OPEN) throw new Error('This ride is not open');
 
-  await prisma.$transaction(async (tx) => {
-    const key = { ridePostId: ride.id, userId: riderId };
-    const existing = await tx.ridePassenger.findUnique({ where: { ridePostId_userId: key } });
-    if (existing?.status === PassengerStatus.ACCEPTED) throw new Error('Already on this ride');
-    if (existing?.status === PassengerStatus.INVITED) throw new Error('Already invited');
+  return toResult(async () => {
+    const { ride, driverId, riderId } = await loadRideConversation(conversationId, user.id);
+    if (user.id !== driverId) throw new UserError('Only the driver can invite riders');
+    if (ride.status !== RideStatus.OPEN) throw new UserError('This ride is not open');
 
-    await tx.ridePassenger.upsert({
-      where: { ridePostId_userId: key },
-      create: key,
-      update: { status: PassengerStatus.INVITED },
+    await prisma.$transaction(async (tx) => {
+      const key = { ridePostId: ride.id, userId: riderId };
+      const existing = await tx.ridePassenger.findUnique({ where: { ridePostId_userId: key } });
+      if (existing?.status === PassengerStatus.ACCEPTED)
+        throw new UserError('Already on this ride');
+      if (existing?.status === PassengerStatus.INVITED) throw new UserError('Already invited');
+
+      await tx.ridePassenger.upsert({
+        where: { ridePostId_userId: key },
+        create: key,
+        update: { status: PassengerStatus.INVITED },
+      });
+      await postUpdate(tx, conversationId, user.id, 'Invited you to join this ride.');
     });
-    await postUpdate(tx, conversationId, user.id, 'Invited you to join this ride.');
   });
 }
 
 /** Rider only: accepts (taking a seat) or declines a pending invite. */
-export async function respondToInvite(conversationId: string, accept: boolean): Promise<void> {
+export async function respondToInvite(
+  conversationId: string,
+  accept: boolean,
+): Promise<ActionResult<void>> {
   const user = await requireUser();
-  const { ride, riderId } = await loadRideConversation(conversationId, user.id);
-  if (user.id !== riderId) throw new Error('Only the invited rider can respond');
 
-  await prisma.$transaction(async (tx) => {
-    const { count } = await tx.ridePassenger.updateMany({
-      where: { ridePostId: ride.id, userId: user.id, status: PassengerStatus.INVITED },
-      data: { status: accept ? PassengerStatus.ACCEPTED : PassengerStatus.DECLINED },
+  return toResult(async () => {
+    const { ride, riderId } = await loadRideConversation(conversationId, user.id);
+    if (user.id !== riderId) throw new UserError('Only the invited rider can respond');
+
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.ridePassenger.updateMany({
+        where: { ridePostId: ride.id, userId: user.id, status: PassengerStatus.INVITED },
+        data: { status: accept ? PassengerStatus.ACCEPTED : PassengerStatus.DECLINED },
+      });
+      if (count === 0) throw new UserError('No pending invite');
+
+      if (accept) await takeSeat(tx, ride.id);
+      await postUpdate(
+        tx,
+        conversationId,
+        user.id,
+        accept ? 'Accepted the invite.' : 'Declined the invite.',
+      );
     });
-    if (count === 0) throw new Error('No pending invite');
-
-    if (accept) await takeSeat(tx, ride.id);
-    await postUpdate(
-      tx,
-      conversationId,
-      user.id,
-      accept ? 'Accepted the invite.' : 'Declined the invite.',
-    );
   });
 }
 
 /** Rider only: gives up their seat on a ride they joined. */
-export async function leaveRide(conversationId: string): Promise<void> {
+export async function leaveRide(conversationId: string): Promise<ActionResult<void>> {
   const user = await requireUser();
-  const { ride, riderId } = await loadRideConversation(conversationId, user.id);
-  if (user.id !== riderId) throw new Error('Only riders can leave a ride');
-  if (ride.status !== RideStatus.OPEN && ride.status !== RideStatus.FULL) {
-    throw new Error('This ride has already ended');
-  }
 
-  await prisma.$transaction(async (tx) => {
-    const { count } = await tx.ridePassenger.deleteMany({
-      where: { ridePostId: ride.id, userId: user.id, status: PassengerStatus.ACCEPTED },
+  return toResult(async () => {
+    const { ride, riderId } = await loadRideConversation(conversationId, user.id);
+    if (user.id !== riderId) throw new UserError('Only riders can leave a ride');
+    if (ride.status !== RideStatus.OPEN && ride.status !== RideStatus.FULL) {
+      throw new UserError('This ride has already ended');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.ridePassenger.deleteMany({
+        where: { ridePostId: ride.id, userId: user.id, status: PassengerStatus.ACCEPTED },
+      });
+      if (count === 0) throw new UserError('You are not on this ride');
+
+      await releaseSeat(tx, ride.id);
+      await postUpdate(tx, conversationId, user.id, 'Left the ride.');
     });
-    if (count === 0) throw new Error('You are not on this ride');
-
-    await releaseSeat(tx, ride.id);
-    await postUpdate(tx, conversationId, user.id, 'Left the ride.');
   });
 }
 
 /** Driver only: cancels a pending invite, or removes a rider who already joined. */
-export async function removePassenger(conversationId: string): Promise<void> {
+export async function removePassenger(conversationId: string): Promise<ActionResult<void>> {
   const user = await requireUser();
-  const { ride, driverId, riderId } = await loadRideConversation(conversationId, user.id);
-  if (user.id !== driverId) throw new Error('Only the driver can remove riders');
 
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.ridePassenger.findUnique({
-      where: { ridePostId_userId: { ridePostId: ride.id, userId: riderId } },
+  return toResult(async () => {
+    const { ride, driverId, riderId } = await loadRideConversation(conversationId, user.id);
+    if (user.id !== driverId) throw new UserError('Only the driver can remove riders');
+
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.ridePassenger.findUnique({
+        where: { ridePostId_userId: { ridePostId: ride.id, userId: riderId } },
+      });
+      if (!existing || existing.status === PassengerStatus.DECLINED) {
+        throw new UserError('Nothing to cancel');
+      }
+
+      // Conditional on the status just read, so a concurrent accept can't leak a seat
+      const { count } = await tx.ridePassenger.deleteMany({
+        where: { ridePostId: ride.id, userId: riderId, status: existing.status },
+      });
+      if (count === 0) throw new UserError('The invite just changed, please try again');
+
+      const wasRiding = existing.status === PassengerStatus.ACCEPTED;
+      if (wasRiding) await releaseSeat(tx, ride.id);
+      await postUpdate(
+        tx,
+        conversationId,
+        user.id,
+        wasRiding ? 'Removed you from this ride.' : 'Cancelled the invite.',
+      );
     });
-    if (!existing || existing.status === PassengerStatus.DECLINED) {
-      throw new Error('Nothing to cancel');
-    }
-
-    // Conditional on the status just read, so a concurrent accept can't leak a seat
-    const { count } = await tx.ridePassenger.deleteMany({
-      where: { ridePostId: ride.id, userId: riderId, status: existing.status },
-    });
-    if (count === 0) throw new Error('The invite just changed, please try again');
-
-    const wasRiding = existing.status === PassengerStatus.ACCEPTED;
-    if (wasRiding) await releaseSeat(tx, ride.id);
-    await postUpdate(
-      tx,
-      conversationId,
-      user.id,
-      wasRiding ? 'Removed you from this ride.' : 'Cancelled the invite.',
-    );
   });
 }
 

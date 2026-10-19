@@ -64,6 +64,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { errorMessage, unwrap } from '@/lib/actionResult';
 import { getMyRidePassengers } from '@/lib/passengers';
 import { deletePost, fetchPosts, updatePost } from '@/lib/posts';
 
@@ -129,19 +130,21 @@ const EditRideDialog = ({
 
   const onSubmit = async (data: z.infer<typeof editSchema>) => {
     try {
-      await updatePost(post.id, {
-        origin: data.origin,
-        destination: data.destination,
-        departureDate: data.departureDate,
-        seatsAvailable: data.seatsAvailable,
-        seatPrice: data.seatPrice,
-        comments: data.comments,
-      });
+      await unwrap(
+        updatePost(post.id, {
+          origin: data.origin,
+          destination: data.destination,
+          departureDate: data.departureDate,
+          seatsAvailable: data.seatsAvailable,
+          seatPrice: data.seatPrice,
+          comments: data.comments,
+        }),
+      );
       toast.success('Ride updated');
       setOpen(false);
       onSuccess();
-    } catch {
-      toast.error('Failed to update ride');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Failed to update ride'));
     }
   };
 

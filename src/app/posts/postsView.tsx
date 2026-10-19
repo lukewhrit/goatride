@@ -33,6 +33,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { errorMessage, unwrap } from '@/lib/actionResult';
 import { getOrCreateConversation } from '@/lib/messages';
 import { cn } from '@/lib/utils';
 
@@ -179,15 +180,12 @@ const PostsView = ({
                     disabled={ride.creator.id === currentUserId}
                     onClick={async () => {
                       try {
-                        const conversationId = await getOrCreateConversation(
-                          ride.creator.id,
-                          ride.id,
+                        const conversationId = await unwrap(
+                          getOrCreateConversation(ride.creator.id, ride.id),
                         );
                         router.push(`/messages?conversation=${conversationId}`);
                       } catch (err) {
-                        toast.error(
-                          err instanceof Error ? err.message : 'Could not open conversation',
-                        );
+                        toast.error(errorMessage(err, 'Could not open conversation'));
                       }
                     }}
                   >

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@/lib/actionResult';
 import { uploadAvatar } from '@/lib/avatars';
 import { avatarKeyFromUrl, deleteUserAvatars, validateAvatarFile } from '@/lib/avatarStorage';
 
@@ -62,22 +63,22 @@ describe('avatarKeyFromUrl', () => {
 describe('uploadAvatar', () => {
   it('requires a session', async () => {
     requireUser.mockRejectedValue(new Error('Not authenticated'));
-    await expect(uploadAvatar(form(webp()))).rejects.toThrow('Not authenticated');
+    await expect(unwrap(uploadAvatar(form(webp())))).rejects.toThrow('Not authenticated');
     expect(blob.put).not.toHaveBeenCalled();
   });
 
   it('rejects missing and invalid files before storing anything', async () => {
-    await expect(uploadAvatar(form(null))).rejects.toThrow('No avatar');
-    await expect(uploadAvatar(form('not a file'))).rejects.toThrow('No avatar');
+    await expect(unwrap(uploadAvatar(form(null)))).rejects.toThrow('No avatar');
+    await expect(unwrap(uploadAvatar(form('not a file')))).rejects.toThrow('No avatar');
     await expect(
-      uploadAvatar(form(new File(['<svg/>'], 'a.svg', { type: 'image/svg+xml' }))),
+      unwrap(uploadAvatar(form(new File(['<svg/>'], 'a.svg', { type: 'image/svg+xml' })))),
     ).rejects.toThrow('WebP, PNG, or JPEG');
     expect(blob.put).not.toHaveBeenCalled();
     expect(updateUser).not.toHaveBeenCalled();
   });
 
   it("stores a public blob under the user's prefix and points the user at it", async () => {
-    const url = await uploadAvatar(form(webp()));
+    const url = await unwrap(uploadAvatar(form(webp())));
 
     const [pathname, , opts] = blob.put.mock.calls[0];
     expect(pathname).toMatch(/^avatars\/user-me\/[\w-]+\.webp$/);
@@ -89,7 +90,7 @@ describe('uploadAvatar', () => {
   it('deletes the previous stored avatar after switching', async () => {
     prisma.user.findUnique.mockResolvedValue({ image: `${BLOB_HOST}/avatars/user-me/old.webp` });
 
-    await uploadAvatar(form(webp()));
+    await unwrap(uploadAvatar(form(webp())));
 
     expect(blob.del).toHaveBeenCalledWith('avatars/user-me/old.webp');
     expect(updateUser.mock.invocationCallOrder[0]).toBeLessThan(
@@ -99,7 +100,7 @@ describe('uploadAvatar', () => {
 
   it('leaves images that are not ours alone', async () => {
     prisma.user.findUnique.mockResolvedValue({ image: 'data:image/png;base64,AAAA' });
-    await uploadAvatar(form(webp()));
+    await unwrap(uploadAvatar(form(webp())));
     expect(blob.del).not.toHaveBeenCalled();
   });
 });

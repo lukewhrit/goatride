@@ -25,6 +25,7 @@ import {
   InputGroupText,
 } from '@/components/ui/input-group';
 import { Textarea } from '@/components/ui/textarea';
+import { errorMessage, unwrap } from '@/lib/actionResult';
 import { publishPostSchema } from '@/lib/validation';
 
 import { publishPost } from '../../lib/posts';
@@ -50,13 +51,13 @@ const PostRideForm = (): JSX.Element => {
 
   async function onSubmit(data: z.infer<typeof publishPostSchema>) {
     try {
-      const post = await publishPost(data);
+      const post = await unwrap(publishPost(data));
 
       setOpen(false);
       // New URL → the server page re-renders with the new post first in the list
       router.push(`/posts?highlight=${post.id}`);
-    } catch {
-      toast.error('Something went wrong. Please try again later.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not share your ride. Please try again later.'));
     }
   }
 
