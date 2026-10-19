@@ -33,7 +33,7 @@ const Footer = ({ logo, menu }: NavbarProps): JSX.Element => (
           />
           <span className="text-lg font-semibold tracking-tighter">{logo.title}</span>
         </a>
-        <p>
+        <p className="text-muted-foreground">
           © {new Date().getFullYear()} Luke Whritenour. Licensed under the{' '}
           <a
             className="underline underline-offset-4 hover:text-foreground"
