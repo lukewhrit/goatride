@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
-// eslint-disable-next-line import-x/no-namespace
-import * as z from 'zod';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,25 +25,19 @@ import {
   InputGroupText,
 } from '@/components/ui/input-group';
 import { Textarea } from '@/components/ui/textarea';
+import { publishPostSchema } from '@/lib/validation';
 
 import { publishPost } from '../../lib/posts';
 
 import type { JSX } from 'react';
-
-const formSchema = z.object({
-  origin: z.string(),
-  destination: z.string(),
-  departureDate: z.string(),
-  seatsAvailable: z.coerce.number<string>().min(1),
-  seatPrice: z.coerce.number<string>().min(0.0),
-  comments: z.string(),
-});
+// eslint-disable-next-line import-x/no-namespace
+import type * as z from 'zod';
 
 const PostRideForm = (): JSX.Element => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(publishPostSchema),
     defaultValues: {
       origin: '',
       destination: '',
@@ -55,15 +48,15 @@ const PostRideForm = (): JSX.Element => {
     },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
+  async function onSubmit(data: z.infer<typeof publishPostSchema>) {
     try {
       const post = await publishPost(data);
 
       setOpen(false);
       // New URL → the server page re-renders with the new post first in the list
       router.push(`/posts?highlight=${post.id}`);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Something went wrong. Please try again later.');
     }
   }
 
@@ -77,7 +70,7 @@ const PostRideForm = (): JSX.Element => {
         id="create-post-form"
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>Share a Ride</DialogTitle>
             <DialogDescription>

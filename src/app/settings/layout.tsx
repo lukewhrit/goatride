@@ -158,8 +158,8 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
     }
   }, [isPending, session, router]);
 
-  if (isPending) return <p className="text-center mt-8 text-white">Loading…</p>;
-  if (!session?.user) return <p className="text-center mt-8 text-white">Redirecting…</p>;
+  if (isPending) return <p className="text-center mt-8">Loading…</p>;
+  if (!session?.user) return <p className="text-center mt-8">Redirecting…</p>;
 
   return (
     <div>
@@ -220,7 +220,7 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
             <DeleteAccountDialog />
           </SidebarFooter>
         </Sidebar>
-        <main className="w-full h-screen space-y-4 text-white">{children}</main>
+        <main className="w-full h-screen space-y-4">{children}</main>
       </SidebarProvider>
     </div>
   );
