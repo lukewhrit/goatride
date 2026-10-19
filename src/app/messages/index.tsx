@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSession } from '@/lib/auth-client';
 import { MESSAGES_READ_EVENT } from '@/lib/messageEvents';
 import { getConversations, getMessages, sendMessage } from '@/lib/messages';
+import { invitePassenger, leaveRide, removePassenger, respondToInvite } from '@/lib/passengers';
 import { cn } from '@/lib/utils';
 
 import type { JSX } from 'react';
@@ -114,14 +115,146 @@ const RideSummary = ({ ride, isOwn }: { ride: ConversationRide; isOwn: boolean }
         <span className="truncate">{ride.destination}</span>
       </div>
       <p className="mt-1 text-neutral-400">
-        {format(new Date(ride.departureTime), 'EEE, MMM d · h:mm a')} · {ride.seatsAvailable} seat
-        {ride.seatsAvailable === 1 ? '' : 's'}
+        {format(new Date(ride.departureTime), 'EEE, MMM d · h:mm a')} ·{' '}
+        {ride.seatsAvailable - ride.seatsTaken} of {ride.seatsAvailable} seat
+        {ride.seatsAvailable === 1 ? '' : 's'} left
         {ride.price === '0' ? ' · Free' : ` · $${ride.price}/seat`}
         {ride.status === 'OPEN' ? '' : ` · ${ride.status.toLowerCase()}`}
       </p>
     </section>
   </div>
 );
+
+/** Invite status for a ride conversation, with the actions open to the viewer, above the input. */
+const RideActionBar = ({
+  conversationId,
+  ride,
+  isDriver,
+  otherName,
+  onChange,
+}: {
+  conversationId: string;
+  ride: ConversationRide;
+  isDriver: boolean;
+  otherName: string;
+  onChange: () => void;
+}): JSX.Element => {
+  const [busy, setBusy] = useState(false);
+
+  const run = async (action: () => Promise<void>, success: string) => {
+    setBusy(true);
+    try {
+      await action();
+      toast.success(success);
+      onChange();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const ended = ride.status === 'COMPLETED' || ride.status === 'CANCELLED';
+  const open = ride.status === 'OPEN';
+  const status = ride.passengerStatus;
+  let text: string;
+  let actions: React.ReactNode = null;
+
+  if (ended) {
+    text = ride.status === 'CANCELLED' ? 'This ride was cancelled.' : 'This ride has finished.';
+  } else if (isDriver) {
+    if (status === 'ACCEPTED') {
+      text = `${otherName} is riding with you.`;
+      actions = (
+        <Button
+          disabled={busy}
+          onClick={async () => run(async () => removePassenger(conversationId), 'Rider removed')}
+          size="sm"
+          variant="outline"
+        >
+          Remove
+        </Button>
+      );
+    } else if (status === 'INVITED') {
+      text = `Invite sent. Waiting for ${otherName} to respond.`;
+      actions = (
+        <Button
+          disabled={busy}
+          onClick={async () => run(async () => removePassenger(conversationId), 'Invite cancelled')}
+          size="sm"
+          variant="outline"
+        >
+          Cancel invite
+        </Button>
+      );
+    } else {
+      if (!open) text = 'This ride is full.';
+      else if (status === 'DECLINED') text = `${otherName} declined your invite.`;
+      else text = `Invite ${otherName} to ride with you.`;
+      actions = open ? (
+        <Button
+          disabled={busy}
+          onClick={async () => run(async () => invitePassenger(conversationId), 'Invite sent')}
+          size="sm"
+        >
+          {status === 'DECLINED' ? 'Invite again' : 'Invite to ride'}
+        </Button>
+      ) : null;
+    }
+  } else if (status === 'INVITED') {
+    text = open
+      ? `${otherName} invited you to this ride.`
+      : `${otherName} invited you, but the ride is now full.`;
+    actions = (
+      <>
+        <Button
+          disabled={busy}
+          size="sm"
+          variant="outline"
+          onClick={async () =>
+            run(async () => respondToInvite(conversationId, false), 'Invite declined')
+          }
+        >
+          Decline
+        </Button>
+        {open ? (
+          <Button
+            disabled={busy}
+            size="sm"
+            onClick={async () =>
+              run(async () => respondToInvite(conversationId, true), "You're on the ride!")
+            }
+          >
+            Accept
+          </Button>
+        ) : null}
+      </>
+    );
+  } else if (status === 'ACCEPTED') {
+    text = `You're riding with ${otherName}.`;
+    actions = (
+      <Button
+        disabled={busy}
+        onClick={async () => run(async () => leaveRide(conversationId), 'You left the ride')}
+        size="sm"
+        variant="outline"
+      >
+        Leave ride
+      </Button>
+    );
+  } else if (status === 'DECLINED') {
+    text = 'You declined the invite to this ride.';
+  } else {
+    text = `${otherName} can invite you to this ride from this chat.`;
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 border-t border-neutral-800 bg-neutral-900 text-sm shrink-0">
+      <p className="flex-1 text-neutral-300">{text}</p>
+      {actions ? <div className="flex gap-2 shrink-0">{actions}</div> : null}
+    </div>
+  );
+};
 
 const MessageBubble = ({
   message,
@@ -355,6 +488,19 @@ const MessagesPage = (): JSX.Element => {
                   />
                 ))}
             </div>
+
+            {selectedConversation?.ride ? (
+              <RideActionBar
+                conversationId={selectedConversation.id}
+                isDriver={selectedConversation.ride.creatorId === session.user.id}
+                otherName={selectedConversation.otherUser.name}
+                ride={selectedConversation.ride}
+                onChange={() => {
+                  fetchConversations();
+                  fetchMessages(selectedConversation.id);
+                }}
+              />
+            ) : null}
 
             {/* Input */}
             <div className="px-4 py-3 border-t border-neutral-800 shrink-0">

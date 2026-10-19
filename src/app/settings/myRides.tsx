@@ -64,6 +64,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { getMyRidePassengers } from '@/lib/passengers';
 import { deletePost, fetchPosts, updatePost } from '@/lib/posts';
 
 import { useUserContext } from '../providers';
@@ -77,7 +78,7 @@ import type {
 } from '@tanstack/react-table';
 import type { JSX } from 'react';
 
-import type { RidePostListItem as PostDisplay } from '@/lib/posts';
+import type { PublicUser, RidePostListItem as PostDisplay } from '@/lib/posts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -322,6 +323,7 @@ const DeleteRideDialog = ({
 const MyRides = (): JSX.Element => {
   const userCtx = useUserContext();
   const [posts, setPosts] = useState<PostDisplay[]>([]);
+  const [passengers, setPassengers] = useState<Record<string, PublicUser[]>>({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
@@ -330,14 +332,18 @@ const MyRides = (): JSX.Element => {
   const fetchData = useCallback(async () => {
     if (!userCtx?.user.id) return;
 
-    const p = await fetchPosts({
-      page: 1,
-      pageSize: 50,
-      rideStatus: 'ALL',
-      ownerId: userCtx.user.id,
-    });
+    const [p, riders] = await Promise.all([
+      fetchPosts({
+        page: 1,
+        pageSize: 50,
+        rideStatus: 'ALL',
+        ownerId: userCtx.user.id,
+      }),
+      getMyRidePassengers(),
+    ]);
 
     setPosts(p.items);
+    setPassengers(riders);
   }, [userCtx?.user.id]);
 
   useEffect(() => {
@@ -397,7 +403,24 @@ const MyRides = (): JSX.Element => {
       {
         accessorKey: 'seatsAvailable',
         header: 'Seats',
-        cell: ({ row }) => <div>{row.getValue('seatsAvailable')}</div>,
+        cell: ({ row }) => (
+          <div>
+            {row.original.seatsTaken}/{row.original.seatsAvailable}
+          </div>
+        ),
+      },
+      {
+        id: 'passengers',
+        header: 'Passengers',
+        cell: ({ row }) => {
+          const riders = passengers[row.original.id] ?? [];
+          return (
+            <div className="max-w-40 truncate">
+              {riders.length ? riders.map((r) => r.name).join(', ') : '—'}
+            </div>
+          );
+        },
+        enableSorting: false,
       },
       {
         accessorKey: 'price',
@@ -422,7 +445,7 @@ const MyRides = (): JSX.Element => {
         enableHiding: false,
       },
     ],
-    [fetchData],
+    [fetchData, passengers],
   );
 
   const table = useTable({

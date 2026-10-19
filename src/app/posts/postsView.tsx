@@ -149,8 +149,8 @@ const PostsView = ({
                     <section>
                       <h2 className="text-md font-bold mb-0.5">Seats Available</h2>
                       <p>
-                        {item.seatsAvailable} seat
-                        {item.seatsAvailable === 1 ? '' : 's'} available
+                        {item.seatsAvailable - item.seatsTaken} of {item.seatsAvailable} seat
+                        {item.seatsAvailable === 1 ? '' : 's'} left
                         {item.price !== '0' ? <span> at ${item.price} per seat</span> : ''}.
                       </p>
                     </section>

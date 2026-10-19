@@ -4,10 +4,13 @@ const { prisma, requireUser, geocodeAddress } = vi.hoisted(() => ({
   prisma: {
     ridePost: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
+      fields: { seatsAvailable: 'ref:seatsAvailable', seatsTaken: 'ref:seatsTaken' },
     },
   },
   requireUser: vi.fn(),
@@ -149,6 +152,37 @@ describe('updatePost / deletePost', () => {
   it('ignores any extra user id smuggled in by the client', async () => {
     await updatePost('post-1', { seatsAvailable: 3, creatorId: 'victim' } as never);
     expect(prisma.ridePost.update.mock.calls[0][0].where.creatorId).toBe(me.id);
+  });
+
+  it('refuses to cut seats below the riders who already joined', async () => {
+    prisma.ridePost.findUnique.mockResolvedValue({ seatsTaken: 3 });
+
+    await expect(updatePost('post-1', { seatsAvailable: 2 })).rejects.toThrow(
+      '3 riders have already joined',
+    );
+    expect(prisma.ridePost.update).not.toHaveBeenCalled();
+  });
+
+  it('re-syncs OPEN/FULL when the seat count changes', async () => {
+    prisma.ridePost.findUnique.mockResolvedValue({ seatsTaken: 2 });
+
+    await updatePost('post-1', { seatsAvailable: 2 });
+
+    const [toFull, toOpen] = prisma.ridePost.updateMany.mock.calls.map(
+      ([args]) => args as { where: Record<string, unknown>; data: Record<string, unknown> },
+    );
+    expect(toFull.where).toMatchObject({ creatorId: me.id, status: 'OPEN' });
+    expect(toFull.data).toEqual({ status: 'FULL' });
+    expect(toOpen.where).toMatchObject({ creatorId: me.id, status: 'FULL' });
+    expect(toOpen.data).toEqual({ status: 'OPEN' });
+  });
+
+  it('leaves an explicit status change alone', async () => {
+    prisma.ridePost.findUnique.mockResolvedValue({ seatsTaken: 0 });
+
+    await updatePost('post-1', { seatsAvailable: 2, status: 'CANCELLED' });
+
+    expect(prisma.ridePost.updateMany).not.toHaveBeenCalled();
   });
 
   it('scopes deletes to posts owned by the session user', async () => {
