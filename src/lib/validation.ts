@@ -13,8 +13,8 @@ const postFields = z.object({
   origin: place,
   destination: place,
   departureDate,
-  seatsAvailable: z.coerce.number().int().min(1).max(8),
-  seatPrice: z.coerce.number().min(0).max(9999.99),
+  seatsAvailable: z.coerce.number<string | number>().int().min(1).max(8),
+  seatPrice: z.coerce.number<string | number>().min(0).max(9999.99),
   comments: z.string().max(1000),
 });
 
