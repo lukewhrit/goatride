@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowRightIcon } from '@heroicons/react/24/solid';
+import { format } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -96,28 +97,33 @@ const PostsView = ({
       <main className="my-5 px-10">
         {posts.length === 0 && <p className="text-center">No rides yet. Share one!</p>}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-          {posts.map((item) => (
-            <Dialog key={item.id}>
+          {posts.map((ride) => (
+            <Dialog key={ride.id}>
               <DialogTrigger asChild>
                 <Card
-                  onClick={() => highlightPost(item.id)}
+                  onClick={() => highlightPost(ride.id)}
                   className={cn(
                     'flex flex-col',
                     'transition hover:outline-2 hover:outline-blue-500',
-                    item.id === highlight
+                    ride.id === highlight
                       ? 'outline-2 outline-blue-500 shadow-blue-500/50 shadow-lg'
                       : '',
                   )}
                 >
                   <CardHeader>
                     <CardTitle>
-                      {item.origin} to {item.destination}
+                      {ride.origin} to {ride.destination}
                     </CardTitle>
-                    <CardDescription>Posted by {item.creator.name}</CardDescription>
+                    <CardDescription>Posted by {ride.creator.name}</CardDescription>
                   </CardHeader>
-                  <CardContent className="mt-auto">
-                    {/* Seats: {item.seatsAvailable}/${item.price} */}
-                    {/* {item.departureTime.toDateString()} */}
+                  <CardContent>
+                    <p className="text-neutral-400">
+                      {format(new Date(ride.departureTime), 'EEE, MMM d · h:mm a')} ·{' '}
+                      {ride.seatsAvailable - ride.seatsTaken} of {ride.seatsAvailable} seat
+                      {ride.seatsAvailable === 1 ? '' : 's'} left
+                      {ride.price === '0' ? ' · Free' : ` · $${ride.price}/seat`}
+                      {ride.status === 'OPEN' ? '' : ` · ${ride.status.toLowerCase()}`}
+                    </p>
                   </CardContent>
                   <CardFooter>
                     <Button className="w-full" variant="outline">
@@ -128,20 +134,20 @@ const PostsView = ({
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Ride shared by {item.creator.name}</DialogTitle>
+                  <DialogTitle>Ride shared by {ride.creator.name}</DialogTitle>
                   <DialogDescription className="flex gap-2 items-center">
-                    <Badge className={`badge-${item.status.toString().toLowerCase()}`}>
-                      {item.status.toString()}
+                    <Badge className={`badge-${ride.status.toString().toLowerCase()}`}>
+                      {ride.status.toString()}
                     </Badge>
-                    Last updated on {(item.lastEditedAt ?? item.createdAt).toDateString()}
+                    Last updated on {(ride.lastEditedAt ?? ride.createdAt).toDateString()}
                   </DialogDescription>
                 </DialogHeader>
                 <section className="flex flex-col gap-3">
                   <section className="bg-neutral-50 dark:bg-neutral-900 p-3 rounded-md border">
                     <div className="flex gap-3 justify-center items-center font-bold text-xl text-black dark:text-white">
-                      <span>{item.origin}</span>
+                      <span>{ride.origin}</span>
                       <ArrowRightIcon className="text-center h-4" />
-                      <span>{item.destination}</span>
+                      <span>{ride.destination}</span>
                     </div>
                   </section>
 
@@ -149,33 +155,33 @@ const PostsView = ({
                     <section>
                       <h2 className="text-md font-bold mb-0.5">Seats Available</h2>
                       <p>
-                        {item.seatsAvailable - item.seatsTaken} of {item.seatsAvailable} seat
-                        {item.seatsAvailable === 1 ? '' : 's'} left
-                        {item.price !== '0' ? <span> at ${item.price} per seat</span> : ''}.
+                        {ride.seatsAvailable - ride.seatsTaken} of {ride.seatsAvailable} seat
+                        {ride.seatsAvailable === 1 ? '' : 's'} left
+                        {ride.price !== '0' ? <span> at ${ride.price} per seat</span> : ''}.
                       </p>
                     </section>
                     <section>
                       <h2 className="text-md font-bold mb-0.5">Departure Date</h2>
                       <div>
-                        {item.departureTime.toLocaleTimeString()} on{' '}
-                        {item.departureTime.toLocaleDateString()}
+                        {ride.departureTime.toLocaleTimeString()} on{' '}
+                        {ride.departureTime.toLocaleDateString()}
                       </div>
                     </section>
                   </div>
 
                   <section>
                     <h2 className="text-md font-bold mb-0.5">Notes</h2>
-                    <p>{item.notes}</p>
+                    <p>{ride.notes}</p>
                   </section>
                 </section>
                 <DialogFooter>
                   <Button
-                    disabled={item.creator.id === currentUserId}
+                    disabled={ride.creator.id === currentUserId}
                     onClick={async () => {
                       try {
                         const conversationId = await getOrCreateConversation(
-                          item.creator.id,
-                          item.id,
+                          ride.creator.id,
+                          ride.id,
                         );
                         router.push(`/messages?conversation=${conversationId}`);
                       } catch (err) {
