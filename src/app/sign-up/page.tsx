@@ -11,6 +11,7 @@ import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { signUp, useSession } from '@/lib/auth-client';
@@ -21,6 +22,9 @@ const formSchema = z.object({
   fullName: z.string(),
   email: z.email(),
   password: z.string(),
+  acceptTerms: z
+    .boolean()
+    .refine((v) => v, 'You must agree to the Terms of Service and Privacy Policy'),
 });
 
 const SignUpPage = (): JSX.Element => {
@@ -28,6 +32,7 @@ const SignUpPage = (): JSX.Element => {
   const { data: session, isPending } = useSession();
   const form = useForm({
     resolver: zodResolver(formSchema),
+    defaultValues: { acceptTerms: false },
   });
 
   useEffect(() => {
@@ -103,6 +108,46 @@ const SignUpPage = (): JSX.Element => {
                       <FieldLabel htmlFor="password">Password</FieldLabel>
                       <Input required id="password" placeholder="*********" type="password" />
                       {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={form.control}
+                  name="acceptTerms"
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} orientation="horizontal">
+                      <Checkbox
+                        aria-invalid={fieldState.invalid}
+                        checked={field.value}
+                        id="accept-terms"
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                      />
+                      <div className="grid gap-1.5">
+                        <FieldLabel className="font-normal leading-snug" htmlFor="accept-terms">
+                          <span>
+                            I am at least 17 years old and agree to the{' '}
+                            <a
+                              className="underline underline-offset-4"
+                              href="/terms"
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              Terms of Service
+                            </a>{' '}
+                            and{' '}
+                            <a
+                              className="underline underline-offset-4"
+                              href="/privacy"
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              Privacy Policy
+                            </a>
+                            .
+                          </span>
+                        </FieldLabel>
+                        {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                      </div>
                     </Field>
                   )}
                 />

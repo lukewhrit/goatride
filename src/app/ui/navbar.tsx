@@ -122,7 +122,14 @@ export const Navbar = ({ auth, logo, menu }: NavbarProps): JSX.Element => {
           <div className="flex items-center gap-6">
             {/* Logo */}
             <a className="flex items-center gap-2" href={logo.url}>
-              <Image preload alt={logo.alt} height={32} src={logo.src} width={32} />
+              <Image
+                preload
+                alt={logo.alt}
+                className="h-8 w-auto"
+                height={32}
+                src={logo.src}
+                width={32}
+              />
               <span className="text-lg font-semibold tracking-tighter">{logo.title}</span>
             </a>
             <div className="flex items-center">

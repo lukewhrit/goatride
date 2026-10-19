@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -198,25 +199,25 @@ const Home = (): JSX.Element => (
       </div>
     </section>
     {/* About Us Section - commented out until its ready */}
-    {/* <section className="md:px-5 xl:px-15 grid items-center gap-8 md:grid-cols-2">
+    <section className="md:px-5 xl:px-15 grid items-center gap-16 md:grid-cols-2">
       <div className="flex flex-col">
         <h1 className="my-6 text-2xl font-bold text-pretty lg:text-4xl">About Us</h1>
         <p className="mb-8 max-w-lg text-muted-foreground">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vitae suscipit justo, at
-          volutpat arcu. Suspendisse consectetur porttitor turpis, in vehicula felis efficitur non.
-          Nullam ullamcorper lacinia lacus non euismod. Nulla quam massa, accumsan eget erat eget,
-          tristique mattis lectus. Curabitur vestibulum lacus sed orci maximus, non efficitur neque
-          feugiat. Sed semper sodales justo, at posuere neque tempus ut. Proin efficitur aliquet
-          pharetra. Quisque et nibh erat. Suspendisse in quam turpis. Etiam consequat porta sem a
-          fermentum.
+          Years ago, campus ridesharing was nothing more than a corkboard in the student center
+          where drivers could post notes advertising a ride. We want to bring ridesharing back to
+          it&lsquo;s glory day by providing a central platform for organizing rides. Founded at WPI,
+          we make it easy for college students to create, discover, and join rides while
+          automatically managing availability and participation.
         </p>
       </div>
-      <img
+      <Image
         alt="Hero section demo showing interface components"
         className="max-h-96 w-full rounded-md object-cover"
-        src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/placeholder-1.svg"
+        height={250}
+        src="/cars.webp"
+        width={250}
       />
-    </section> */}
+    </section>
   </main>
 );
 
