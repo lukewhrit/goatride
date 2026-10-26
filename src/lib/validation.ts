@@ -28,3 +28,10 @@ export const updatePostSchema = postFields.partial().extend({
 
 export type PublishPostInput = z.input<typeof publishPostSchema>;
 export type UpdatePostInput = z.input<typeof updatePostSchema>;
+
+export const ALLOWED_EMAIL_DOMAIN = 'wpi.edu';
+export const EMAIL_DOMAIN_MESSAGE = `Email must end with @${ALLOWED_EMAIL_DOMAIN}`;
+
+/** Accounts are limited to campus addresses. Case-insensitive, since Better Auth lowercases. */
+export const isAllowedEmail = (email: string): boolean =>
+  email.trim().toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);

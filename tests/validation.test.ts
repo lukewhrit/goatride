@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { publishPostSchema, updatePostSchema } from '@/lib/validation';
+import { isAllowedEmail, publishPostSchema, updatePostSchema } from '@/lib/validation';
 
 const valid = {
   origin: 'Worcester, MA',
@@ -46,5 +46,20 @@ describe('updatePostSchema', () => {
   it('accepts a valid status and rejects unknown ones', () => {
     expect(updatePostSchema.parse({ status: 'CANCELLED' }).status).toBe('CANCELLED');
     expect(updatePostSchema.safeParse({ status: 'DELETED' }).success).toBe(false);
+  });
+});
+
+describe('isAllowedEmail', () => {
+  it('accepts campus addresses regardless of case', () => {
+    expect(isAllowedEmail('goat@wpi.edu')).toBe(true);
+    expect(isAllowedEmail('Goat@WPI.EDU')).toBe(true);
+    expect(isAllowedEmail(' goat@wpi.edu ')).toBe(true);
+  });
+
+  it('rejects other domains, including lookalikes', () => {
+    expect(isAllowedEmail('goat@gmail.com')).toBe(false);
+    expect(isAllowedEmail('goat@notwpi.edu')).toBe(false);
+    expect(isAllowedEmail('goat@wpi.edu.evil.com')).toBe(false);
+    expect(isAllowedEmail('wpi.edu')).toBe(false);
   });
 });

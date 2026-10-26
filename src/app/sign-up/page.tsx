@@ -15,14 +15,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { signUp, useSession } from '@/lib/auth-client';
+import { EMAIL_DOMAIN_MESSAGE, isAllowedEmail } from '@/lib/validation';
 
 import type { JSX } from 'react';
 
 const formSchema = z.object({
   fullName: z.string(),
-  email: z
-    .email()
-    .refine((email: string) => email.endsWith('@wpi.edu'), 'Email must end with @wpi.edu'),
+  email: z.email().refine(isAllowedEmail, EMAIL_DOMAIN_MESSAGE),
   password: z.string(),
   acceptTerms: z
     .boolean()

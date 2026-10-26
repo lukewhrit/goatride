@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { twoFactor } from 'better-auth/plugins';
 
@@ -10,6 +11,13 @@ import {
   sendVerificationEmail,
 } from '@/lib/email';
 import prisma from '@/lib/prisma';
+import { EMAIL_DOMAIN_MESSAGE, isAllowedEmail } from '@/lib/validation';
+
+// Endpoints that set an account's email, and the body field holding the new address
+const emailFieldByPath: Record<string, string | undefined> = {
+  '/sign-up/email': 'email',
+  '/change-email': 'newEmail',
+};
 
 // eslint-disable-next-line import-x/prefer-default-export
 export const auth = betterAuth({
@@ -53,6 +61,20 @@ export const auth = betterAuth({
         await sendChangeEmailConfirmation(user.email, newEmail, url, token);
       },
     },
+  },
+  hooks: {
+    // The sign-up form checks the domain too, but the endpoints are public. Email changes are
+    // covered so an account can't sign up with a campus address and then switch away from it.
+    before: createAuthMiddleware(async (ctx) => {
+      const field = emailFieldByPath[ctx.path];
+      const email = field && (ctx.body as Record<string, unknown> | undefined)?.[field];
+      if (typeof email === 'string' && !isAllowedEmail(email)) {
+        throw APIError.from('BAD_REQUEST', {
+          code: 'EMAIL_DOMAIN_NOT_ALLOWED',
+          message: EMAIL_DOMAIN_MESSAGE,
+        });
+      }
+    }),
   },
   // nextCookies must be last so server actions calling auth.api can set cookies.
   plugins: [twoFactor(), nextCookies()],
