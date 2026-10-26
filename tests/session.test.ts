@@ -23,7 +23,9 @@ describe('requireVerifiedUser', () => {
 
   it('refuses unverified users with a message the user can see', async () => {
     getSession.mockResolvedValue({ user: { ...me, emailVerified: false } });
-    await expect(unwrap(toResult(requireVerifiedUser))).rejects.toThrow('Verify your email');
+    await expect(unwrap(toResult(requireVerifiedUser))).rejects.toThrow(
+      'verify your email address',
+    );
   });
 
   it('still lets unverified users through requireUser', async () => {
