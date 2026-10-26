@@ -27,6 +27,8 @@ vi.mock('@/lib/prisma', () => ({ default: prisma }));
 vi.mock('@/lib/session', () => ({ requireUser }));
 
 // eslint-disable-next-line import-x/first
+import { unwrap } from '@/lib/actionResult';
+// eslint-disable-next-line import-x/first
 import {
   getMyRidePassengers,
   invitePassenger,
@@ -61,10 +63,10 @@ beforeEach(() => {
 
 describe('conversation scoping', () => {
   it.each([
-    ['invitePassenger', async () => invitePassenger('c1')],
-    ['respondToInvite', async () => respondToInvite('c1', true)],
-    ['leaveRide', async () => leaveRide('c1')],
-    ['removePassenger', async () => removePassenger('c1')],
+    ['invitePassenger', async () => unwrap(invitePassenger('c1'))],
+    ['respondToInvite', async () => unwrap(respondToInvite('c1', true))],
+    ['leaveRide', async () => unwrap(leaveRide('c1'))],
+    ['removePassenger', async () => unwrap(removePassenger('c1'))],
   ])('%s rejects users outside the conversation', async (_name, call) => {
     requireUser.mockResolvedValue({ id: 'stranger', name: 'S', email: 's@wpi.edu' });
     await expect(call()).rejects.toThrow('Not a participant');
@@ -77,7 +79,7 @@ describe('conversation scoping', () => {
       participants: [{ userId: driver.id }, { userId: rider.id }],
       ridePost: null,
     });
-    await expect(invitePassenger('c1')).rejects.toThrow('not about a ride');
+    await expect(unwrap(invitePassenger('c1'))).rejects.toThrow('not about a ride');
   });
 });
 
@@ -85,7 +87,7 @@ describe('invitePassenger', () => {
   beforeEach(() => requireUser.mockResolvedValue(driver));
 
   it('invites the other participant and tells them in the chat', async () => {
-    await invitePassenger('c1');
+    await unwrap(invitePassenger('c1'));
 
     expect(prisma.ridePassenger.upsert).toHaveBeenCalledWith({
       where: { ridePostId_userId: { ridePostId: 'ride-1', userId: rider.id } },
@@ -103,18 +105,18 @@ describe('invitePassenger', () => {
 
   it('can re-invite a rider who declined', async () => {
     prisma.ridePassenger.findUnique.mockResolvedValue({ status: 'DECLINED' });
-    await invitePassenger('c1');
+    await unwrap(invitePassenger('c1'));
     expect(prisma.ridePassenger.upsert).toHaveBeenCalled();
   });
 
   it('only lets the driver invite', async () => {
     requireUser.mockResolvedValue(rider);
-    await expect(invitePassenger('c1')).rejects.toThrow('Only the driver');
+    await expect(unwrap(invitePassenger('c1'))).rejects.toThrow('Only the driver');
   });
 
   it('refuses rides that are not open', async () => {
     prisma.conversation.findUnique.mockResolvedValue(rideConversation('FULL'));
-    await expect(invitePassenger('c1')).rejects.toThrow('not open');
+    await expect(unwrap(invitePassenger('c1'))).rejects.toThrow('not open');
   });
 
   it.each([
@@ -122,7 +124,7 @@ describe('invitePassenger', () => {
     ['INVITED', 'Already invited'],
   ])('refuses to re-invite a rider who is %s', async (status, message) => {
     prisma.ridePassenger.findUnique.mockResolvedValue({ status });
-    await expect(invitePassenger('c1')).rejects.toThrow(message);
+    await expect(unwrap(invitePassenger('c1'))).rejects.toThrow(message);
     expect(prisma.ridePassenger.upsert).not.toHaveBeenCalled();
   });
 });
@@ -131,7 +133,7 @@ describe('respondToInvite', () => {
   beforeEach(() => requireUser.mockResolvedValue(rider));
 
   it('accepting takes a seat without overbooking and marks the ride full when it fills', async () => {
-    await respondToInvite('c1', true);
+    await unwrap(respondToInvite('c1', true));
 
     expect(prisma.ridePassenger.updateMany).toHaveBeenCalledWith({
       where: { ridePostId: 'ride-1', userId: rider.id, status: 'INVITED' },
@@ -150,12 +152,12 @@ describe('respondToInvite', () => {
 
   it('fails (rolling back the accept) when the last seat is gone', async () => {
     prisma.ridePost.updateMany.mockResolvedValueOnce({ count: 0 });
-    await expect(respondToInvite('c1', true)).rejects.toThrow('no seats left');
+    await expect(unwrap(respondToInvite('c1', true))).rejects.toThrow('no seats left');
     expect(prisma.message.create).not.toHaveBeenCalled();
   });
 
   it('declining frees nothing and takes no seat', async () => {
-    await respondToInvite('c1', false);
+    await unwrap(respondToInvite('c1', false));
 
     expect(prisma.ridePassenger.updateMany.mock.calls[0][0].data).toEqual({ status: 'DECLINED' });
     expect(prisma.ridePost.updateMany).not.toHaveBeenCalled();
@@ -163,13 +165,13 @@ describe('respondToInvite', () => {
 
   it('requires a pending invite', async () => {
     prisma.ridePassenger.updateMany.mockResolvedValue({ count: 0 });
-    await expect(respondToInvite('c1', true)).rejects.toThrow('No pending invite');
+    await expect(unwrap(respondToInvite('c1', true))).rejects.toThrow('No pending invite');
     expect(prisma.ridePost.updateMany).not.toHaveBeenCalled();
   });
 
   it('only lets the rider respond', async () => {
     requireUser.mockResolvedValue(driver);
-    await expect(respondToInvite('c1', true)).rejects.toThrow('Only the invited rider');
+    await expect(unwrap(respondToInvite('c1', true))).rejects.toThrow('Only the invited rider');
   });
 });
 
@@ -177,7 +179,7 @@ describe('leaveRide', () => {
   beforeEach(() => requireUser.mockResolvedValue(rider));
 
   it('frees the seat and reopens a full ride', async () => {
-    await leaveRide('c1');
+    await unwrap(leaveRide('c1'));
 
     expect(prisma.ridePassenger.deleteMany).toHaveBeenCalledWith({
       where: { ridePostId: 'ride-1', userId: rider.id, status: 'ACCEPTED' },
@@ -195,13 +197,13 @@ describe('leaveRide', () => {
 
   it('requires having joined', async () => {
     prisma.ridePassenger.deleteMany.mockResolvedValue({ count: 0 });
-    await expect(leaveRide('c1')).rejects.toThrow('not on this ride');
+    await expect(unwrap(leaveRide('c1'))).rejects.toThrow('not on this ride');
     expect(prisma.ridePost.updateMany).not.toHaveBeenCalled();
   });
 
   it('refuses rides that already ended', async () => {
     prisma.conversation.findUnique.mockResolvedValue(rideConversation('COMPLETED'));
-    await expect(leaveRide('c1')).rejects.toThrow('already ended');
+    await expect(unwrap(leaveRide('c1'))).rejects.toThrow('already ended');
   });
 });
 
@@ -211,7 +213,7 @@ describe('removePassenger', () => {
   it('cancelling an invite frees no seat', async () => {
     prisma.ridePassenger.findUnique.mockResolvedValue({ status: 'INVITED' });
 
-    await removePassenger('c1');
+    await unwrap(removePassenger('c1'));
 
     expect(prisma.ridePassenger.deleteMany).toHaveBeenCalledWith({
       where: { ridePostId: 'ride-1', userId: rider.id, status: 'INVITED' },
@@ -222,7 +224,7 @@ describe('removePassenger', () => {
   it('removing a rider frees their seat', async () => {
     prisma.ridePassenger.findUnique.mockResolvedValue({ status: 'ACCEPTED' });
 
-    await removePassenger('c1');
+    await unwrap(removePassenger('c1'));
 
     expect(ridePostUpdates()[0].data).toEqual({ seatsTaken: { decrement: 1 } });
   });
@@ -231,13 +233,13 @@ describe('removePassenger', () => {
     prisma.ridePassenger.findUnique.mockResolvedValue({ status: 'INVITED' });
     prisma.ridePassenger.deleteMany.mockResolvedValue({ count: 0 });
 
-    await expect(removePassenger('c1')).rejects.toThrow('try again');
+    await expect(unwrap(removePassenger('c1'))).rejects.toThrow('try again');
     expect(prisma.ridePost.updateMany).not.toHaveBeenCalled();
   });
 
   it('only lets the driver remove riders', async () => {
     requireUser.mockResolvedValue(rider);
-    await expect(removePassenger('c1')).rejects.toThrow('Only the driver');
+    await expect(unwrap(removePassenger('c1'))).rejects.toThrow('Only the driver');
   });
 });
 

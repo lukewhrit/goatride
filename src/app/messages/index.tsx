@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { errorMessage, unwrap } from '@/lib/actionResult';
 import { useSession } from '@/lib/auth-client';
 import { MESSAGES_READ_EVENT } from '@/lib/messageEvents';
 import { getConversations, getMessages, sendMessage } from '@/lib/messages';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 
 import type { JSX } from 'react';
 
+import type { ActionResult } from '@/lib/actionResult';
 import type { ConversationPreview, ConversationRide, MessageData } from '@/lib/messages';
 
 const formatTimestamp = (date: Date): string => {
@@ -141,14 +143,14 @@ const RideActionBar = ({
 }): JSX.Element => {
   const [busy, setBusy] = useState(false);
 
-  const run = async (action: () => Promise<void>, success: string) => {
+  const run = async (action: () => Promise<ActionResult<void>>, success: string) => {
     setBusy(true);
     try {
-      await action();
+      await unwrap(action());
       toast.success(success);
       onChange();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Something went wrong');
+      toast.error(errorMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -366,12 +368,12 @@ const MessagesPage = (): JSX.Element => {
     setMessages((prev) => [...prev, optimistic]);
 
     try {
-      const real = await sendMessage(selectedId, content);
+      const real = await unwrap(sendMessage(selectedId, content));
       setMessages((prev) => prev.map((m) => (m.id === optimisticId ? real : m)));
       // Refresh conversation list so last-message preview updates
       fetchConversations();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send message');
+      toast.error(errorMessage(err, 'Failed to send message'));
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       setDraft(content);
     } finally {

@@ -31,6 +31,7 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { errorMessage, unwrap } from '@/lib/actionResult';
 import { authClient, useSession } from '@/lib/auth-client';
 import { uploadAvatar } from '@/lib/avatars';
 import { changeEmail } from '@/lib/user';
@@ -141,12 +142,12 @@ const AvatarUpload = (): JSX.Element => {
     try {
       const formData = new FormData();
       formData.set('avatar', pending.blob, 'avatar');
-      await uploadAvatar(formData);
+      await unwrap(uploadAvatar(formData));
       await refetch();
       setPending(null);
       toast.success('Avatar updated');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update avatar');
+      toast.error(errorMessage(err, 'Failed to update avatar'));
     } finally {
       setLoading(false);
     }
@@ -280,12 +281,12 @@ const EmailForm = (): JSX.Element => {
     if (!pendingEmail || !currentPassword) return;
     setConfirming(true);
     try {
-      await changeEmail(pendingEmail, currentPassword);
+      await unwrap(changeEmail(pendingEmail, currentPassword));
       toast.success('Check your inbox to confirm the change');
       closeDialog();
       form.reset();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update email');
+      toast.error(errorMessage(err, 'Failed to update email'));
       setCurrentPassword('');
     } finally {
       setConfirming(false);

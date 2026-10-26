@@ -4,6 +4,8 @@
  * `@/lib/maps`. Plain fetch rather than Google's SDK: it's two query params and no extra dependency.
  */
 
+import { UserError } from '@/lib/actionResult';
+
 const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 
 export const UNKNOWN_PLACE = 'Unknown location';
@@ -61,7 +63,7 @@ export async function geocodeAddress(address: string): Promise<GeocodedPlace> {
   const data = (await res.json()) as GeocodeResponse;
   const result = data.results[0];
   if (data.status === 'ZERO_RESULTS' || (data.status === 'OK' && !result)) {
-    throw new Error(`Could not find a location for "${address}"`);
+    throw new UserError(`Could not find a location for "${address}"`);
   }
   if (data.status !== 'OK' || !result) {
     throw new Error(
