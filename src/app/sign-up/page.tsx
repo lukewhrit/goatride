@@ -20,7 +20,9 @@ import type { JSX } from 'react';
 
 const formSchema = z.object({
   fullName: z.string(),
-  email: z.email(),
+  email: z
+    .email()
+    .refine((email: string) => email.endsWith('@wpi.edu'), 'Email must end with @wpi.edu'),
   password: z.string(),
   acceptTerms: z
     .boolean()
