@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -18,20 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
 import { authClient, signOut, useSession } from '@/lib/auth-client';
+import { cn } from '@/lib/utils';
 
 import type { JSX } from 'react';
 
@@ -96,12 +85,11 @@ const useIsActive = () => {
   };
 };
 
-const scrollToSection = (hash: string) => {
-  if (!hash.startsWith('#')) return;
-  window.history.pushState(null, '', hash);
+// Scrolling happens in SettingsLayout once the hash state updates, since on mobile the content
+// pane is hidden until a section is selected.
+const navigateTo = (url: string) => {
+  window.history.pushState(null, '', url);
   window.dispatchEvent(new HashChangeEvent('hashchange'));
-  const el = document.querySelector(hash);
-  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 const DeleteAccountDialog = (): JSX.Element => {
@@ -151,8 +139,20 @@ const DeleteAccountDialog = (): JSX.Element => {
 
 const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element => {
   const isActive = useIsActive();
+  const hash = useHash();
+  const pathname = usePathname();
   const { data: session, isPending } = useSession();
   const router = useRouter();
+
+  const selected = sections.flatMap((s) => s.items).find((item) => isActive(item));
+
+  useEffect(() => {
+    if (!hash) return undefined;
+    const frame = requestAnimationFrame(() => {
+      document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [hash]);
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -164,77 +164,82 @@ const SettingsLayout = ({ children }: Readonly<{ children: React.ReactNode }>): 
   if (!session?.user) return <p className="text-center mt-8">Redirecting…</p>;
 
   return (
-    <div>
-      <SidebarProvider className="border-t-1">
-        <Sidebar className="sticky h-full" collapsible="icon" variant="sidebar">
-          <SidebarHeader>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <div className="flex p-1 gap-3 items-center">
-                  <div className="flex overflow-hidden aspect-square size-8 items-center justify-center rounded-full">
-                    {session.user.image ? (
-                      <Image
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                        height={32}
-                        src={session.user.image}
-                        width={32}
-                      />
-                    ) : (
-                      <DefaultAvatar />
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span>{session.user.name || 'No Name'}</span>
-                    <span className="font-mono text-sm text-secondary-foreground">
-                      {session.user.email}
-                    </span>
-                  </div>
-                </div>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarHeader>
-          <SidebarContent>
-            {sections.map((s) => (
-              <SidebarGroup key={s.key}>
-                <SidebarGroupLabel>{s.title}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {s.items.map((item) => (
-                      <SidebarMenuItem key={item.key}>
-                        <SidebarMenuButton asChild isActive={isActive(item)}>
-                          <a
-                            href={item.url}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              scrollToSection(item.url);
-                            }}
-                          >
-                            {item.title}
-                          </a>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ))}
-          </SidebarContent>
-          <SidebarFooter>
-            <Button
-              variant="default"
-              onClick={async () => {
-                await signOut();
-                router.push('/');
-              }}
-            >
-              Sign Out
-            </Button>
-            <DeleteAccountDialog />
-          </SidebarFooter>
-        </Sidebar>
-        <main className="w-full h-screen space-y-4">{children}</main>
-      </SidebarProvider>
+    <div className="flex h-[calc(100dvh-73px)] text-white overflow-hidden border-t border-neutral-800">
+      <aside
+        className={cn(
+          'w-full md:w-72 shrink-0 border-r border-neutral-800 flex-col',
+          hash ? 'hidden md:flex' : 'flex',
+        )}
+      >
+        <div className="flex items-center gap-3 px-4 py-3 shrink-0">
+          <div className="shrink-0 size-10 rounded-full overflow-hidden flex items-center justify-center">
+            {session.user.image ? (
+              <Image
+                alt="Avatar"
+                className="w-full h-full object-cover"
+                height={40}
+                src={session.user.image}
+                width={40}
+              />
+            ) : (
+              <DefaultAvatar />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{session.user.name || 'No Name'}</p>
+            <p className="text-sm text-neutral-400 truncate">{session.user.email}</p>
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto">
+          {sections.map((s) => (
+            <div key={s.key} className="pt-3">
+              <p className="px-4 pb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                {s.title}
+              </p>
+              {s.items.map((item) => (
+                <a
+                  key={item.key}
+                  href={item.url}
+                  className={cn(
+                    'block w-full px-4 py-3 text-left text-sm transition-colors',
+                    isActive(item) ? 'bg-neutral-800' : 'hover:bg-neutral-800/50',
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigateTo(item.url);
+                  }}
+                >
+                  {item.title}
+                </a>
+              ))}
+            </div>
+          ))}
+        </nav>
+
+        <div className="flex flex-col gap-2 p-4 border-t border-neutral-800 shrink-0">
+          <Button
+            variant="default"
+            onClick={async () => {
+              await signOut();
+              router.push('/');
+            }}
+          >
+            Sign Out
+          </Button>
+          <DeleteAccountDialog />
+        </div>
+      </aside>
+
+      <div className={cn('flex-1 flex-col overflow-hidden', hash ? 'flex' : 'hidden md:flex')}>
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-neutral-800 shrink-0">
+          <Button onClick={() => navigateTo(pathname)} size="icon" variant="ghost">
+            <ArrowLeftIcon className="size-4" />
+          </Button>
+          <span>{selected?.title ?? 'Settings'}</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">{children}</div>
+      </div>
     </div>
   );
 };
