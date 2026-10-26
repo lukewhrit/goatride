@@ -3,7 +3,7 @@
 import { toResult, UserError } from './actionResult';
 import { UNKNOWN_PLACE } from './geocoding';
 import prisma from './prisma';
-import { requireUser } from './session';
+import { requireUser, requireVerifiedUser } from './session';
 
 import type { PassengerStatus } from '@/generated/prisma/enums';
 
@@ -166,9 +166,9 @@ export async function sendMessage(
   conversationId: string,
   content: string,
 ): Promise<ActionResult<MessageData>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     const trimmed = content.trim();
     if (!trimmed) throw new UserError('Message cannot be empty');
     if (trimmed.length > 2000) throw new UserError('Message is too long (2,000 characters max)');
@@ -201,9 +201,9 @@ export async function getOrCreateConversation(
   otherUserId: string,
   ridePostId?: string,
 ): Promise<ActionResult<string>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     if (user.id === otherUserId) throw new UserError('You cannot message yourself');
 
     const other = await prisma.user.findUnique({

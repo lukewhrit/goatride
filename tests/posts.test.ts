@@ -18,13 +18,19 @@ const { prisma, requireUser, geocodeAddress } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/prisma', () => ({ default: prisma }));
-vi.mock('@/lib/session', () => ({ requireUser }));
+// Actions that change data use requireVerifiedUser; by default it returns the same user
+vi.mock('@/lib/session', () => ({
+  requireUser,
+  requireVerifiedUser: vi.fn(async (): Promise<unknown> => requireUser()),
+}));
 vi.mock('@/lib/geocoding', () => ({ geocodeAddress, UNKNOWN_PLACE: 'Unknown location' }));
 
 // eslint-disable-next-line import-x/first
-import { unwrap } from '@/lib/actionResult';
+import { unwrap, UserError } from '@/lib/actionResult';
 // eslint-disable-next-line import-x/first
 import { deletePost, fetchPosts, publishPost, updatePost } from '@/lib/posts';
+// eslint-disable-next-line import-x/first
+import { requireVerifiedUser } from '@/lib/session';
 
 const me = { id: 'user-me', name: 'Me', email: 'me@wpi.edu' };
 
@@ -46,13 +52,38 @@ describe('ride post actions require a session', () => {
     ['fetchPosts', async () => fetchPosts({ page: 1, rideStatus: 'OPEN' })],
     ['publishPost', async () => unwrap(publishPost({} as never))],
     ['updatePost', async () => unwrap(updatePost('post-1', {}))],
-    ['deletePost', async () => deletePost('post-1')],
+    ['deletePost', async () => unwrap(deletePost('post-1'))],
   ])('%s rejects anonymous callers', async (_name, call) => {
     await expect(call()).rejects.toThrow('Not authenticated');
     expect(prisma.ridePost.findMany).not.toHaveBeenCalled();
     expect(prisma.ridePost.create).not.toHaveBeenCalled();
     expect(prisma.ridePost.update).not.toHaveBeenCalled();
     expect(prisma.ridePost.delete).not.toHaveBeenCalled();
+  });
+});
+
+const unverified = () =>
+  vi.mocked(requireVerifiedUser).mockRejectedValueOnce(new UserError('Verify your email address'));
+
+describe('ride post actions require a verified email', () => {
+  it.each([
+    ['publishPost', async () => unwrap(publishPost({} as never))],
+    ['updatePost', async () => unwrap(updatePost('post-1', { seatsAvailable: 3 }))],
+    ['deletePost', async () => unwrap(deletePost('post-1'))],
+  ])('%s refuses unverified users', async (_name, call) => {
+    unverified();
+    await expect(call()).rejects.toThrow('Verify your email');
+    expect(prisma.ridePost.findUnique).not.toHaveBeenCalled();
+    expect(prisma.ridePost.create).not.toHaveBeenCalled();
+    expect(prisma.ridePost.update).not.toHaveBeenCalled();
+    expect(prisma.ridePost.delete).not.toHaveBeenCalled();
+  });
+
+  it('still lets unverified users browse rides', async () => {
+    prisma.ridePost.findMany.mockResolvedValue([]);
+    prisma.ridePost.count.mockResolvedValue(0);
+    await fetchPosts({ page: 1, rideStatus: 'OPEN' });
+    expect(requireVerifiedUser).not.toHaveBeenCalled();
   });
 });
 
@@ -192,7 +223,7 @@ describe('updatePost / deletePost', () => {
   });
 
   it('scopes deletes to posts owned by the session user', async () => {
-    await deletePost('post-1');
+    await unwrap(deletePost('post-1'));
     expect(prisma.ridePost.delete).toHaveBeenCalledWith({
       where: { id: 'post-1', creatorId: me.id },
     });

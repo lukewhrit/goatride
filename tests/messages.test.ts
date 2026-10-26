@@ -13,17 +13,40 @@ const { prisma, requireUser } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/prisma', () => ({ default: prisma }));
-vi.mock('@/lib/session', () => ({ requireUser }));
+// Actions that change data use requireVerifiedUser; by default it returns the same user
+vi.mock('@/lib/session', () => ({
+  requireUser,
+  requireVerifiedUser: vi.fn(async (): Promise<unknown> => requireUser()),
+}));
 
 // eslint-disable-next-line import-x/first
-import { unwrap } from '@/lib/actionResult';
+import { unwrap, UserError } from '@/lib/actionResult';
 // eslint-disable-next-line import-x/first
 import { getMessages, getOrCreateConversation, sendMessage } from '@/lib/messages';
+// eslint-disable-next-line import-x/first
+import { requireVerifiedUser } from '@/lib/session';
 
 const me = { id: 'user-me', name: 'Me', email: 'me@wpi.edu' };
 
 beforeEach(() => {
   requireUser.mockResolvedValue(me);
+});
+
+const unverified = () =>
+  vi.mocked(requireVerifiedUser).mockRejectedValueOnce(new UserError('Verify your email address'));
+
+describe('message actions require a verified email', () => {
+  it.each([
+    ['sendMessage', async () => unwrap(sendMessage('c1', 'hi'))],
+    ['getOrCreateConversation', async () => unwrap(getOrCreateConversation('other'))],
+  ])('%s refuses unverified users', async (_name, call) => {
+    unverified();
+    await expect(call()).rejects.toThrow('Verify your email');
+    expect(prisma.conversationParticipant.findUnique).not.toHaveBeenCalled();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.conversation.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('sendMessage', () => {

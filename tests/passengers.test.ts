@@ -24,10 +24,14 @@ const { prisma, requireUser } = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/prisma', () => ({ default: prisma }));
-vi.mock('@/lib/session', () => ({ requireUser }));
+// Actions that change data use requireVerifiedUser; by default it returns the same user
+vi.mock('@/lib/session', () => ({
+  requireUser,
+  requireVerifiedUser: vi.fn(async (): Promise<unknown> => requireUser()),
+}));
 
 // eslint-disable-next-line import-x/first
-import { unwrap } from '@/lib/actionResult';
+import { unwrap, UserError } from '@/lib/actionResult';
 // eslint-disable-next-line import-x/first
 import {
   getMyRidePassengers,
@@ -36,6 +40,8 @@ import {
   removePassenger,
   respondToInvite,
 } from '@/lib/passengers';
+// eslint-disable-next-line import-x/first
+import { requireVerifiedUser } from '@/lib/session';
 
 const driver = { id: 'driver', name: 'Driver', email: 'driver@wpi.edu' };
 const rider = { id: 'rider', name: 'Rider', email: 'rider@wpi.edu' };
@@ -59,6 +65,23 @@ beforeEach(() => {
   prisma.ridePassenger.updateMany.mockResolvedValue({ count: 1 });
   prisma.ridePassenger.deleteMany.mockResolvedValue({ count: 1 });
   prisma.ridePassenger.findUnique.mockResolvedValue(null);
+});
+
+const unverified = () =>
+  vi.mocked(requireVerifiedUser).mockRejectedValueOnce(new UserError('Verify your email address'));
+
+describe('passenger actions require a verified email', () => {
+  it.each([
+    ['invitePassenger', async () => unwrap(invitePassenger('c1'))],
+    ['respondToInvite', async () => unwrap(respondToInvite('c1', true))],
+    ['leaveRide', async () => unwrap(leaveRide('c1'))],
+    ['removePassenger', async () => unwrap(removePassenger('c1'))],
+  ])('%s refuses unverified users', async (_name, call) => {
+    unverified();
+    await expect(call()).rejects.toThrow('Verify your email');
+    expect(prisma.conversation.findUnique).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
 });
 
 describe('conversation scoping', () => {

@@ -2,12 +2,14 @@ import { cache } from 'react';
 
 import { headers } from 'next/headers';
 
+import { UserError } from '@/lib/actionResult';
 import { auth } from '@/lib/auth';
 
 export interface SessionUser {
   id: string;
   name: string;
   email: string;
+  emailVerified: boolean;
 }
 
 /*
@@ -28,5 +30,17 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
+  return user;
+}
+
+/**
+ * Like `requireUser`, but also requires a verified email. Every action that changes data or
+ * reaches other users must call this, inside `toResult` so the user sees why they were refused.
+ * Sign-in doesn't require verification (see auth.ts), so this is what keeps unverified accounts
+ * read-only.
+ */
+export async function requireVerifiedUser(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!user.emailVerified) throw new UserError('You need to verify your email address to do this');
   return user;
 }

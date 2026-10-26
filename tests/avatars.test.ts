@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { unwrap } from '@/lib/actionResult';
+import { unwrap, UserError } from '@/lib/actionResult';
 import { uploadAvatar } from '@/lib/avatars';
 import { avatarKeyFromUrl, deleteUserAvatars, validateAvatarFile } from '@/lib/avatarStorage';
+import { requireVerifiedUser } from '@/lib/session';
 
 const { blob, prisma, requireUser, updateUser } = vi.hoisted(() => ({
   blob: { put: vi.fn(), del: vi.fn(), list: vi.fn() },
@@ -15,7 +16,11 @@ vi.mock('@vercel/blob', () => blob);
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }));
 vi.mock('@/lib/auth', () => ({ auth: { api: { updateUser } } }));
 vi.mock('@/lib/prisma', () => ({ default: prisma }));
-vi.mock('@/lib/session', () => ({ requireUser }));
+// Actions that change data use requireVerifiedUser; by default it returns the same user
+vi.mock('@/lib/session', () => ({
+  requireUser,
+  requireVerifiedUser: vi.fn(async (): Promise<unknown> => requireUser()),
+}));
 
 const me = { id: 'user-me', name: 'Me', email: 'me@wpi.edu' };
 const BLOB_HOST = 'https://abc123.public.blob.vercel-storage.com';
@@ -64,6 +69,14 @@ describe('uploadAvatar', () => {
   it('requires a session', async () => {
     requireUser.mockRejectedValue(new Error('Not authenticated'));
     await expect(unwrap(uploadAvatar(form(webp())))).rejects.toThrow('Not authenticated');
+    expect(blob.put).not.toHaveBeenCalled();
+  });
+
+  it('requires a verified email', async () => {
+    vi.mocked(requireVerifiedUser).mockRejectedValueOnce(
+      new UserError('Verify your email address'),
+    );
+    await expect(unwrap(uploadAvatar(form(webp())))).rejects.toThrow('Verify your email');
     expect(blob.put).not.toHaveBeenCalled();
   });
 

@@ -25,7 +25,9 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
   },
   // Verification isn't required to sign in, since accounts created before email was wired up are
-  // unverified. Set emailAndPassword.requireEmailVerification once that's no longer a concern.
+  // unverified. Instead, server actions refuse unverified users (requireVerifiedUser) so they can
+  // still sign in and resend the link. Set emailAndPassword.requireEmailVerification once that's
+  // no longer a concern.
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,

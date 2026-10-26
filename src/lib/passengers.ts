@@ -3,7 +3,7 @@
 import { PassengerStatus, RideStatus } from '@/generated/prisma/enums';
 import { toResult, UserError } from '@/lib/actionResult';
 import prisma from '@/lib/prisma';
-import { requireUser } from '@/lib/session';
+import { requireUser, requireVerifiedUser } from '@/lib/session';
 
 import type { Prisma } from '@/generated/prisma/client';
 import type { ActionResult } from '@/lib/actionResult';
@@ -92,9 +92,9 @@ async function releaseSeat(tx: Tx, ridePostId: string) {
 
 /** Driver only: invites the other participant of a ride conversation to the ride. */
 export async function invitePassenger(conversationId: string): Promise<ActionResult<void>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     const { ride, driverId, riderId } = await loadRideConversation(conversationId, user.id);
     if (user.id !== driverId) throw new UserError('Only the driver can invite riders');
     if (ride.status !== RideStatus.OPEN) throw new UserError('This ride is not open');
@@ -121,9 +121,9 @@ export async function respondToInvite(
   conversationId: string,
   accept: boolean,
 ): Promise<ActionResult<void>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     const { ride, riderId } = await loadRideConversation(conversationId, user.id);
     if (user.id !== riderId) throw new UserError('Only the invited rider can respond');
 
@@ -147,9 +147,9 @@ export async function respondToInvite(
 
 /** Rider only: gives up their seat on a ride they joined. */
 export async function leaveRide(conversationId: string): Promise<ActionResult<void>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     const { ride, riderId } = await loadRideConversation(conversationId, user.id);
     if (user.id !== riderId) throw new UserError('Only riders can leave a ride');
     if (ride.status !== RideStatus.OPEN && ride.status !== RideStatus.FULL) {
@@ -170,9 +170,9 @@ export async function leaveRide(conversationId: string): Promise<ActionResult<vo
 
 /** Driver only: cancels a pending invite, or removes a rider who already joined. */
 export async function removePassenger(conversationId: string): Promise<ActionResult<void>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     const { ride, driverId, riderId } = await loadRideConversation(conversationId, user.id);
     if (user.id !== driverId) throw new UserError('Only the driver can remove riders');
 

@@ -283,12 +283,12 @@ const DeleteRideDialog = ({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await deletePost(postId);
+      await unwrap(deletePost(postId));
       toast.success('Ride deleted');
       setOpen(false);
       onSuccess();
-    } catch {
-      toast.error('Failed to delete ride');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Failed to delete ride'));
     } finally {
       setLoading(false);
     }

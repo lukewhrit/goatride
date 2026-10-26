@@ -3,6 +3,7 @@ import './globals.css';
 
 import Footer from '@/app/ui/footer';
 import { Navbar } from '@/app/ui/navbar';
+import VerifyEmailBanner from '@/app/ui/verifyEmailBanner';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
@@ -41,6 +42,7 @@ const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>): JSX.
     <body className="font-sans antialiased">
       <Providers>
         <Navbar auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
+        <VerifyEmailBanner />
         <div>{children}</div>
         <Footer auth={navItems.auth} logo={navItems.logo} menu={navItems.menu} />
       </Providers>

@@ -11,7 +11,7 @@ import {
   validateAvatarFile,
 } from '@/lib/avatarStorage';
 import prisma from '@/lib/prisma';
-import { requireUser } from '@/lib/session';
+import { requireVerifiedUser } from '@/lib/session';
 
 import type { ActionResult } from '@/lib/actionResult';
 
@@ -21,9 +21,9 @@ import type { ActionResult } from '@/lib/actionResult';
  */
 // eslint-disable-next-line import-x/prefer-default-export
 export async function uploadAvatar(formData: FormData): Promise<ActionResult<string>> {
-  const user = await requireUser();
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+
     const file = formData.get('avatar');
     if (!(file instanceof File)) throw new UserError('No avatar uploaded');
     const invalid = validateAvatarFile(file);

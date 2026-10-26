@@ -4,7 +4,7 @@ import { RideStatus } from '@/generated/prisma/enums';
 import { toResult, UserError } from '@/lib/actionResult';
 import { geocodeAddress, UNKNOWN_PLACE } from '@/lib/geocoding';
 import prisma from '@/lib/prisma';
-import { requireUser } from '@/lib/session';
+import { requireUser, requireVerifiedUser } from '@/lib/session';
 import { publishPostSchema, updatePostSchema } from '@/lib/validation';
 
 import type { RidePost } from '@/generated/prisma/client';
@@ -82,10 +82,10 @@ export async function fetchPosts(opts: {
 export async function publishPost(
   input: PublishPostInput,
 ): Promise<ActionResult<Omit<RidePostPriceString, 'creator'>>> {
-  const user = await requireUser();
-  const data = publishPostSchema.parse(input);
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+    const data = publishPostSchema.parse(input);
+
     const [geocodedOrigin, geocodedDestination] = await Promise.all([
       geocodeAddress(data.origin),
       geocodeAddress(data.destination),
@@ -121,10 +121,10 @@ export async function publishPost(
 }
 
 export async function updatePost(id: string, input: UpdatePostInput): Promise<ActionResult<void>> {
-  const user = await requireUser();
-  const data = updatePostSchema.parse(input);
-
   return toResult(async () => {
+    const user = await requireVerifiedUser();
+    const data = updatePostSchema.parse(input);
+
     // Riders who already joined keep their seats
     if (data.seatsAvailable !== undefined) {
       const current = await prisma.ridePost.findUnique({
@@ -190,10 +190,12 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ac
   });
 }
 
-export async function deletePost(id: string): Promise<void> {
-  const user = await requireUser();
+export async function deletePost(id: string): Promise<ActionResult<void>> {
+  return toResult(async () => {
+    const user = await requireVerifiedUser();
 
-  await prisma.ridePost.delete({
-    where: { id, creatorId: user.id },
+    await prisma.ridePost.delete({
+      where: { id, creatorId: user.id },
+    });
   });
 }
