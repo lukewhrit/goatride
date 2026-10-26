@@ -30,6 +30,7 @@ import * as z from 'zod';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -64,6 +65,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { RideStatus } from '@/generated/prisma/enums';
 import { errorMessage, unwrap } from '@/lib/actionResult';
 import { getMyRidePassengers } from '@/lib/passengers';
 import { deletePost, fetchPosts, updatePost } from '@/lib/posts';
@@ -106,7 +108,15 @@ const editSchema = z.object({
   seatsAvailable: z.coerce.number().min(1).max(8),
   seatPrice: z.coerce.number().min(0),
   comments: z.string(),
+  status: z.enum(RideStatus),
 });
+
+const statusLabels: Record<RideStatus, string> = {
+  OPEN: 'Open',
+  FULL: 'Full',
+  CANCELLED: 'Cancelled',
+  COMPLETED: 'Completed',
+};
 
 const EditRideDialog = ({
   post,
@@ -125,6 +135,7 @@ const EditRideDialog = ({
       seatsAvailable: String(post.seatsAvailable),
       seatPrice: post.price,
       comments: post.notes,
+      status: post.status,
     },
   });
 
@@ -138,6 +149,8 @@ const EditRideDialog = ({
           seatsAvailable: data.seatsAvailable,
           seatPrice: data.seatPrice,
           comments: data.comments,
+          // Only send an explicit status so the server can still flip OPEN/FULL on seat changes
+          ...(form.formState.dirtyFields.status && { status: data.status }),
         }),
       );
       toast.success('Ride updated');
@@ -245,6 +258,30 @@ const EditRideDialog = ({
                 <Field>
                   <FieldLabel>Comments (optional)</FieldLabel>
                   <Textarea {...field} />
+                  {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                </Field>
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="status"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>Ride status</FieldLabel>
+                  <ButtonGroup aria-label="Ride status">
+                    {Object.values(RideStatus).map((status) => (
+                      <Button
+                        key={status}
+                        aria-pressed={field.value === status}
+                        onClick={() => field.onChange(status)}
+                        size="sm"
+                        type="button"
+                        variant={field.value === status ? 'default' : 'outline'}
+                      >
+                        {statusLabels[status]}
+                      </Button>
+                    ))}
+                  </ButtonGroup>
                   {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
                 </Field>
               )}

@@ -4,6 +4,7 @@ import { RideStatus } from '@/generated/prisma/enums';
 import { toResult, UserError } from '@/lib/actionResult';
 import { geocodeAddress, UNKNOWN_PLACE } from '@/lib/geocoding';
 import prisma from '@/lib/prisma';
+import { EXPIRY_GRACE_MS } from '@/lib/rideMaintenance';
 import { requireUser, requireVerifiedUser } from '@/lib/session';
 import { publishPostSchema, updatePostSchema } from '@/lib/validation';
 
@@ -52,6 +53,10 @@ export async function fetchPosts(opts: {
   const where: RidePostWhereInput = {
     ...(opts.rideStatus !== 'ALL' && { status: opts.rideStatus }),
     ...(opts.ownerId && { creatorId: opts.ownerId }),
+    // The expiry cron only runs daily, so hide departed rides it hasn't completed yet
+    ...(opts.rideStatus === RideStatus.OPEN && {
+      departureTime: { gte: new Date(Date.now() - EXPIRY_GRACE_MS) },
+    }),
   };
 
   const [posts, total] = await Promise.all([
@@ -125,16 +130,32 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ac
     const user = await requireVerifiedUser();
     const data = updatePostSchema.parse(input);
 
-    // Riders who already joined keep their seats
-    if (data.seatsAvailable !== undefined) {
+    if (data.seatsAvailable !== undefined || data.status === RideStatus.OPEN) {
       const current = await prisma.ridePost.findUnique({
         where: { id, creatorId: user.id },
-        select: { seatsTaken: true },
+        select: { seatsTaken: true, seatsAvailable: true, departureTime: true },
       });
-      if (current && data.seatsAvailable < current.seatsTaken) {
+
+      // Riders who already joined keep their seats
+      if (
+        current &&
+        data.seatsAvailable !== undefined &&
+        data.seatsAvailable < current.seatsTaken
+      ) {
         throw new UserError(
           `${current.seatsTaken} ${current.seatsTaken === 1 ? 'rider has' : 'riders have'} already joined this ride`,
         );
+      }
+
+      // Reopening only makes sense for a ride that still has room and hasn't left
+      if (current && data.status === RideStatus.OPEN) {
+        if (current.seatsTaken >= (data.seatsAvailable ?? current.seatsAvailable)) {
+          throw new UserError('Every seat is taken; add seats before reopening this ride');
+        }
+        const departure = data.departureDate ? new Date(data.departureDate) : current.departureTime;
+        if (departure.getTime() < Date.now() - EXPIRY_GRACE_MS) {
+          throw new UserError('This ride has already departed');
+        }
       }
     }
 

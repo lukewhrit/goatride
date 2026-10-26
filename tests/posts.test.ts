@@ -125,6 +125,20 @@ describe('fetchPosts', () => {
     ]);
     expect(geocodeAddress).not.toHaveBeenCalled();
   });
+
+  it('hides departed rides from the open listing only', async () => {
+    prisma.ridePost.findMany.mockResolvedValue([]);
+    prisma.ridePost.count.mockResolvedValue(0);
+
+    await fetchPosts({ page: 1, rideStatus: 'OPEN' });
+    await fetchPosts({ page: 1, rideStatus: 'ALL' });
+
+    const [open, all] = prisma.ridePost.findMany.mock.calls.map(
+      ([args]) => (args as { where: Record<string, { gte?: unknown }> }).where,
+    );
+    expect(open.departureTime?.gte).toBeInstanceOf(Date);
+    expect(all).not.toHaveProperty('departureTime');
+  });
 });
 
 describe('publishPost', () => {
@@ -220,6 +234,44 @@ describe('updatePost / deletePost', () => {
     await unwrap(updatePost('post-1', { seatsAvailable: 2, status: 'CANCELLED' }));
 
     expect(prisma.ridePost.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses to reopen a ride with no free seats', async () => {
+    prisma.ridePost.findUnique.mockResolvedValue({
+      seatsTaken: 2,
+      seatsAvailable: 2,
+      departureTime: new Date(Date.now() + 86_400_000),
+    });
+
+    await expect(unwrap(updatePost('post-1', { status: 'OPEN' }))).rejects.toThrow(
+      'Every seat is taken',
+    );
+    expect(prisma.ridePost.update).not.toHaveBeenCalled();
+  });
+
+  it('reopens a ride when the same edit adds seats', async () => {
+    prisma.ridePost.findUnique.mockResolvedValue({
+      seatsTaken: 2,
+      seatsAvailable: 2,
+      departureTime: new Date(Date.now() + 86_400_000),
+    });
+
+    await unwrap(updatePost('post-1', { status: 'OPEN', seatsAvailable: 3 }));
+
+    expect(prisma.ridePost.update.mock.calls[0][0].data.status).toBe('OPEN');
+  });
+
+  it('refuses to reopen a ride that already departed', async () => {
+    prisma.ridePost.findUnique.mockResolvedValue({
+      seatsTaken: 0,
+      seatsAvailable: 2,
+      departureTime: new Date('2020-01-01'),
+    });
+
+    await expect(unwrap(updatePost('post-1', { status: 'OPEN' }))).rejects.toThrow(
+      'already departed',
+    );
+    expect(prisma.ridePost.update).not.toHaveBeenCalled();
   });
 
   it('scopes deletes to posts owned by the session user', async () => {
