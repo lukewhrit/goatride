@@ -127,6 +127,18 @@ describe('fetchPosts', () => {
     expect(geocodeAddress).not.toHaveBeenCalled();
   });
 
+  it('leaves out distance when not searching', async () => {
+    prisma.ridePost.findMany.mockResolvedValue([
+      { id: 'a', price: null },
+      { id: 'b', price: null },
+    ]);
+    prisma.ridePost.count.mockResolvedValue(2);
+
+    const { items } = await fetchPosts({ page: 1, rideStatus: 'OPEN' });
+
+    expect(items.every((p) => !('distanceMiles' in p))).toBe(true);
+  });
+
   it('hides departed rides from the open listing only', async () => {
     prisma.ridePost.findMany.mockResolvedValue([]);
     prisma.ridePost.count.mockResolvedValue(0);

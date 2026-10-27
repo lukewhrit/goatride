@@ -168,7 +168,7 @@ export async function fetchPosts(opts: {
   ]);
 
   return {
-    items: posts.map(toListItem),
+    items: posts.map((post) => toListItem(post)),
     page,
     pageSize,
     total,
