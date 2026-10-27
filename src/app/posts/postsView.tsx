@@ -177,29 +177,26 @@ const PostsView = ({
                 onPlaceSelect={setPlace}
                 searchRef={searchBox}
                 endAdornment={
-                  // Hidden until there's something to search around
-                  query.trim() !== '' && (
-                    <Select onValueChange={setRadius} value={radius}>
-                      <SelectTrigger
-                        aria-label="Search radius"
-                        className="h-7 shrink-0 gap-1 rounded-none border-0 border-l bg-transparent pr-0 pl-3 text-muted-foreground shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent hover:cursor-pointer"
-                        size="sm"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent align="end">
-                        {SEARCH_RADII_MILES.map((miles) => (
-                          <SelectItem
-                            key={miles}
-                            className="hover:cursor-pointer"
-                            value={String(miles)}
-                          >
-                            {miles} mi
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )
+                  <Select onValueChange={setRadius} value={radius}>
+                    <SelectTrigger
+                      aria-label="Search radius"
+                      className="h-7 shrink-0 gap-1 rounded-none border-0 border-l bg-transparent pr-0 pl-3 text-muted-foreground shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent hover:cursor-pointer"
+                      size="sm"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      {SEARCH_RADII_MILES.map((miles) => (
+                        <SelectItem
+                          key={miles}
+                          className="hover:cursor-pointer"
+                          value={String(miles)}
+                        >
+                          {miles} mi
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 }
                 onQueryChange={(value) => {
                   setQuery(value);
