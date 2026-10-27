@@ -2,6 +2,7 @@
 import * as z from 'zod';
 
 import { RideStatus } from '@/generated/prisma/enums';
+import { DEFAULT_SEARCH_RADIUS_MILES, MAX_SEARCH_RADIUS_MILES } from '@/lib/distance';
 
 const place = z.string().trim().min(1, 'Required').max(200);
 const departureDate = z
@@ -28,6 +29,19 @@ export const updatePostSchema = postFields.partial().extend({
 
 export type PublishPostInput = z.input<typeof publishPostSchema>;
 export type UpdatePostInput = z.input<typeof updatePostSchema>;
+
+/** A place to search around: rides whose route passes within `radiusMiles` of it. */
+export const searchNearSchema = z.object({
+  lat: z.coerce.number<string | number>().min(-90).max(90),
+  lng: z.coerce.number<string | number>().min(-180).max(180),
+  radiusMiles: z.coerce
+    .number<string | number>()
+    .min(1)
+    .max(MAX_SEARCH_RADIUS_MILES)
+    .default(DEFAULT_SEARCH_RADIUS_MILES),
+});
+
+export type SearchNearInput = z.input<typeof searchNearSchema>;
 
 export const ALLOWED_EMAIL_DOMAIN = 'wpi.edu';
 export const EMAIL_DOMAIN_MESSAGE = `Email must end with @${ALLOWED_EMAIL_DOMAIN}`;

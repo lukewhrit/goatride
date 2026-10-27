@@ -1,7 +1,7 @@
 'use server';
 
 import { toResult, UserError } from './actionResult';
-import { UNKNOWN_PLACE } from './geocoding';
+import { UNKNOWN_PLACE } from './placeName';
 import prisma from './prisma';
 import { requireUser, requireVerifiedUser } from './session';
 

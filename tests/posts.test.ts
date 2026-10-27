@@ -5,6 +5,7 @@ const { prisma, requireUser, geocodeAddress } = vi.hoisted(() => ({
     ridePost: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('@/lib/session', () => ({
   requireUser,
   requireVerifiedUser: vi.fn(async (): Promise<unknown> => requireUser()),
 }));
-vi.mock('@/lib/geocoding', () => ({ geocodeAddress, UNKNOWN_PLACE: 'Unknown location' }));
+vi.mock('@/lib/geocoding', () => ({ geocodeAddress }));
 
 // eslint-disable-next-line import-x/first
 import { unwrap, UserError } from '@/lib/actionResult';
@@ -138,6 +139,61 @@ describe('fetchPosts', () => {
     );
     expect(open.departureTime?.gte).toBeInstanceOf(Date);
     expect(all).not.toHaveProperty('departureTime');
+  });
+});
+
+describe('fetchPosts near a place', () => {
+  const worcester = { lat: 42.2626, lng: -71.8023 };
+  const boston = { lat: 42.3601, lng: -71.0589 };
+  const providence = { lat: 41.824, lng: -71.4128 };
+  const framingham = { lat: 42.2793, lng: -71.4162 };
+
+  const ride = (id: string, from: typeof boston, to: typeof boston, departure = 0) => ({
+    id,
+    originLat: from.lat,
+    originLng: from.lng,
+    destinationLat: to.lat,
+    destinationLng: to.lng,
+    departureTime: new Date(2026, 10, 1 + departure),
+  });
+
+  it('matches rides passing near the place, closest first, and paginates', async () => {
+    prisma.ridePost.findMany
+      .mockResolvedValueOnce([
+        ride('to-providence', worcester, providence),
+        ride('ends-there', worcester, framingham, 2),
+        ride('passes-by', worcester, boston, 1),
+      ])
+      .mockImplementationOnce(async ({ where }: { where: { id: { in: string[] } } }) =>
+        // Order deliberately scrambled; results must follow distance order
+        [...where.id.in]
+          .reverse()
+          .map((id) => ({ id, price: null, originName: 'A', destinationName: 'B' })),
+      );
+
+    const res = await fetchPosts({
+      page: 1,
+      rideStatus: 'OPEN',
+      near: { ...framingham, radiusMiles: 5 },
+    });
+
+    expect(res.items.map((p) => p.id)).toEqual(['ends-there', 'passes-by']);
+    expect(res.total).toBe(2);
+    expect(res.items[0].distanceMiles).toBeLessThan(1);
+    expect(prisma.ridePost.count).not.toHaveBeenCalled();
+
+    const [prefilter] = prisma.ridePost.findMany.mock.calls[0] as [
+      { where: Record<string, unknown> },
+    ];
+    expect(prefilter.where.status).toBe('OPEN');
+    expect(prefilter.where.AND).toHaveLength(4);
+  });
+
+  it('rejects out-of-range coordinates', async () => {
+    await expect(
+      fetchPosts({ page: 1, rideStatus: 'OPEN', near: { lat: 200, lng: 0 } }),
+    ).rejects.toThrow();
+    expect(prisma.ridePost.findMany).not.toHaveBeenCalled();
   });
 });
 

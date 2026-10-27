@@ -1,6 +1,6 @@
 'use server';
 
-import { geocodeAddress } from '@/lib/geocoding';
+import { resolvePlace } from '@/lib/places';
 import { requireUser } from '@/lib/session';
 
 import type { GeocodedPlace } from '@/lib/geocoding';
@@ -9,5 +9,5 @@ import type { GeocodedPlace } from '@/lib/geocoding';
 export async function geocode(unformatted: string): Promise<GeocodedPlace> {
   await requireUser();
 
-  return geocodeAddress(unformatted);
+  return resolvePlace(unformatted);
 }

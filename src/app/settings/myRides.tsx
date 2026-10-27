@@ -143,8 +143,9 @@ const EditRideDialog = ({
     try {
       await unwrap(
         updatePost(post.id, {
-          origin: data.origin,
-          destination: data.destination,
+          // Unchanged places are left out so the server doesn't look them up again
+          ...(form.formState.dirtyFields.origin && { origin: data.origin }),
+          ...(form.formState.dirtyFields.destination && { destination: data.destination }),
           departureDate: data.departureDate,
           seatsAvailable: data.seatsAvailable,
           seatPrice: data.seatPrice,

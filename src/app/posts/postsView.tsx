@@ -1,7 +1,10 @@
 'use client';
 
-import { ArrowRightIcon } from '@heroicons/react/24/solid';
+import { useRef, useState } from 'react';
+
+import { ArrowRightIcon, MapPinIcon } from '@heroicons/react/24/solid';
 import { format } from 'date-fns';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -33,7 +36,16 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { errorMessage, unwrap } from '@/lib/actionResult';
+import { DEFAULT_SEARCH_RADIUS_MILES, SEARCH_RADII_MILES } from '@/lib/distance';
+import { geocode } from '@/lib/maps';
 import { getOrCreateConversation } from '@/lib/messages';
 import { cn } from '@/lib/utils';
 
@@ -44,21 +56,43 @@ import type { JSX } from 'react';
 
 import type { RidePostListItem } from '@/lib/posts';
 
+import type { AddressSearchHandle, SelectedPlace } from '../ui/placeSearch';
+
+/** The active search, as read from the URL by the page. */
+export interface RideSearch {
+  label: string;
+  lat: number;
+  lng: number;
+  radiusMiles: number;
+}
+
 interface PostsViewProps {
   posts: RidePostListItem[];
   currentPage: number;
   totalPages: number;
   currentUserId: string;
+  search?: RideSearch;
 }
+
+/** How far a ride's route strays from the searched place, as a short badge label. */
+const offRouteLabel = (miles: number): string =>
+  miles < 1 ? 'On the way' : `${Math.round(miles)} mi off route`;
 
 const PostsView = ({
   posts,
   currentPage,
   totalPages,
   currentUserId,
+  search,
 }: PostsViewProps): JSX.Element => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [query, setQuery] = useState(search?.label ?? '');
+  // Cleared whenever the text changes, so a stale pick never searches the wrong place
+  const [place, setPlace] = useState<SelectedPlace | null>(null);
+  const [radius, setRadius] = useState(String(search?.radiusMiles ?? DEFAULT_SEARCH_RADIUS_MILES));
+  const [searching, setSearching] = useState(false);
+  const searchBox = useRef<AddressSearchHandle>(null);
   const pageWindow = 5; // how many page numbers are displayed at once
   const highlight = searchParams.get('highlight') ?? '';
 
@@ -67,6 +101,46 @@ const PostsView = ({
     const params = new URLSearchParams(searchParams.toString());
     params.set('highlight', id);
     window.history.replaceState(null, '', `?${params.toString()}`);
+  };
+
+  const runSearch = async () => {
+    if (!query.trim()) {
+      router.push('/posts');
+      return;
+    }
+
+    setSearching(true);
+    try {
+      /*
+       * Typed text without a pick takes the top suggestion, which closes the autocomplete session
+       * so those keystrokes aren't billed. Only text Google offered nothing for goes to the
+       * server, which checks known towns before falling back to Geocoding.
+       */
+      const target = place ??
+        (await searchBox.current?.pickTopSuggestion()) ?? {
+          ...(await geocode(query)),
+          label: '',
+        };
+      const params = new URLSearchParams({
+        to: target.label || target.name,
+        lat: String(target.lat),
+        lng: String(target.lng),
+        radius,
+      });
+      router.push(`/posts?${params.toString()}`);
+    } catch (err) {
+      toast.error(errorMessage(err, `Could not find "${query}"`));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Pagination keeps the active search
+  const pageHref = (n: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(n));
+    params.delete('highlight');
+    return `?${params.toString()}`;
   };
 
   const pageNumbers = (() => {
@@ -88,15 +162,74 @@ const PostsView = ({
       <header>
         <div className="flex flex-col items-center justify-center gap-3 w-full">
           <h1 className="font-sans font-extrabold text-4xl">Where are you going?</h1>
-          <div className="flex gap-3 lg:items-center lg:justify-center max-w-lg">
-            <AddressSearch className="w-xs" />
-            <Button variant="default">Search</Button>
+          <div className="flex gap-3 lg:items-center lg:justify-center max-w-2xl">
+            <form
+              className="contents"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await runSearch();
+              }}
+            >
+              <AddressSearch
+                aria-label="Where are you going?"
+                className="w-xs"
+                defaultValue={search?.label}
+                onPlaceSelect={setPlace}
+                searchRef={searchBox}
+                endAdornment={
+                  // Hidden until there's something to search around
+                  query.trim() !== '' && (
+                    <Select onValueChange={setRadius} value={radius}>
+                      <SelectTrigger
+                        aria-label="Search radius"
+                        className="h-7 shrink-0 gap-1 rounded-none border-0 border-l bg-transparent pr-0 pl-3 text-muted-foreground shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent hover:cursor-pointer"
+                        size="sm"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        {SEARCH_RADII_MILES.map((miles) => (
+                          <SelectItem
+                            key={miles}
+                            className="hover:cursor-pointer"
+                            value={String(miles)}
+                          >
+                            {miles} mi
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                }
+                onQueryChange={(value) => {
+                  setQuery(value);
+                  setPlace(null);
+                }}
+              />
+              <Button disabled={searching} type="submit" variant="default">
+                {searching ? 'Searching…' : 'Search'}
+              </Button>
+            </form>
             <PostRideForm />
           </div>
+          {search !== undefined && (
+            <p className="text-sm text-neutral-500">
+              Rides passing within {search.radiusMiles} mi of {search.label || 'that place'} ·{' '}
+              <Link className="underline" href="/posts">
+                Clear search
+              </Link>
+            </p>
+          )}
         </div>
       </header>
       <main className="my-5 px-10">
-        {posts.length === 0 && <p className="text-center">No rides yet. Share one!</p>}
+        {posts.length === 0 && (
+          <p className="text-center">
+            {search
+              ? 'No rides pass near there yet. Try a wider radius, or share one!'
+              : 'No rides yet. Share one!'}
+          </p>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
           {posts.map((ride) => (
             <Dialog key={ride.id}>
@@ -116,6 +249,15 @@ const PostsView = ({
                       {ride.origin} to {ride.destination}
                     </CardTitle>
                     <CardDescription>Posted by {ride.creator.name}</CardDescription>
+                    {ride.distanceMiles !== undefined && (
+                      <Badge
+                        title={`Route passes about ${ride.distanceMiles.toFixed(1)} mi from ${search?.label ?? 'your search'}`}
+                        variant="secondary"
+                      >
+                        <MapPinIcon />
+                        {offRouteLabel(ride.distanceMiles)}
+                      </Badge>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <p className="text-neutral-400">
@@ -204,19 +346,19 @@ const PostsView = ({
         <PaginationContent>
           {currentPage !== 1 && (
             <PaginationItem>
-              <PaginationPrevious href={`?page=${Math.max(1, currentPage - 1)}`} />
+              <PaginationPrevious href={pageHref(Math.max(1, currentPage - 1))} />
             </PaginationItem>
           )}
           {pageNumbers.map((v) => (
             <PaginationItem key={v}>
-              <PaginationLink href={`?page=${v}`} isActive={v === currentPage}>
+              <PaginationLink href={pageHref(v)} isActive={v === currentPage}>
                 {v}
               </PaginationLink>
             </PaginationItem>
           ))}
           {currentPage !== pageNumbers[pageNumbers.length - 1] && (
             <PaginationItem>
-              <PaginationNext href={`?page=${currentPage + 1}`} />
+              <PaginationNext href={pageHref(currentPage + 1)} />
             </PaginationItem>
           )}
         </PaginationContent>

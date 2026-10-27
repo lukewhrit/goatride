@@ -2,16 +2,18 @@
 
 import { RideStatus } from '@/generated/prisma/enums';
 import { toResult, UserError } from '@/lib/actionResult';
-import { geocodeAddress, UNKNOWN_PLACE } from '@/lib/geocoding';
+import { boundingBox, distanceToSegmentMiles } from '@/lib/distance';
+import { UNKNOWN_PLACE } from '@/lib/placeName';
+import { resolvePlace } from '@/lib/places';
 import prisma from '@/lib/prisma';
 import { EXPIRY_GRACE_MS } from '@/lib/rideMaintenance';
 import { requireUser, requireVerifiedUser } from '@/lib/session';
-import { publishPostSchema, updatePostSchema } from '@/lib/validation';
+import { publishPostSchema, searchNearSchema, updatePostSchema } from '@/lib/validation';
 
 import type { RidePost } from '@/generated/prisma/client';
 import type { RidePostWhereInput } from '@/generated/prisma/models';
 import type { ActionResult } from '@/lib/actionResult';
-import type { PublishPostInput, UpdatePostInput } from '@/lib/validation';
+import type { PublishPostInput, SearchNearInput, UpdatePostInput } from '@/lib/validation';
 
 /** The subset of a user that is safe to expose to other users. */
 export interface PublicUser {
@@ -29,22 +31,113 @@ export interface RidePostPriceString extends Omit<RidePost, 'price'> {
 export interface RidePostListItem extends RidePostPriceString {
   origin: string;
   destination: string;
+  /** Only set when searching: how close the ride's route passes to the searched place. */
+  distanceMiles?: number;
 }
 
 const publicUserSelect = { id: true, name: true, image: true } as const;
+
+export interface PostsPage {
+  items: RidePostListItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+function toListItem(
+  post: RidePost & { creator: PublicUser },
+  distanceMiles?: number,
+): RidePostListItem {
+  return {
+    ...post,
+    price: post.price?.toString() ?? '0',
+    origin: post.originName ?? UNKNOWN_PLACE,
+    destination: post.destinationName ?? UNKNOWN_PLACE,
+    ...(distanceMiles !== undefined && { distanceMiles }),
+  };
+}
+
+/*
+ * Distance to a segment can't be expressed in a Prisma filter, so narrow the candidates in SQL to
+ * rides whose endpoint box overlaps the search box, then measure, sort, and paginate here. Fine
+ * at our scale: only open, upcoming rides near the point ever reach this loop.
+ */
+async function fetchPostsNear(
+  near: { lat: number; lng: number; radiusMiles: number },
+  baseWhere: RidePostWhereInput,
+  page: number,
+  pageSize: number,
+): Promise<PostsPage> {
+  const box = boundingBox(near, near.radiusMiles);
+  // A segment's box overlaps the search box when min(ends) <= max edge and max(ends) >= min edge
+  const where: RidePostWhereInput = {
+    ...baseWhere,
+    AND: [
+      { OR: [{ originLat: { lte: box.maxLat } }, { destinationLat: { lte: box.maxLat } }] },
+      { OR: [{ originLat: { gte: box.minLat } }, { destinationLat: { gte: box.minLat } }] },
+      { OR: [{ originLng: { lte: box.maxLng } }, { destinationLng: { lte: box.maxLng } }] },
+      { OR: [{ originLng: { gte: box.minLng } }, { destinationLng: { gte: box.minLng } }] },
+    ],
+  };
+
+  const candidates = await prisma.ridePost.findMany({
+    where,
+    select: {
+      id: true,
+      originLat: true,
+      originLng: true,
+      destinationLat: true,
+      destinationLng: true,
+      departureTime: true,
+    },
+  });
+
+  const matches = candidates
+    .map((c) => ({
+      id: c.id,
+      departureTime: c.departureTime,
+      distance: distanceToSegmentMiles(
+        near,
+        { lat: c.originLat, lng: c.originLng },
+        { lat: c.destinationLat, lng: c.destinationLng },
+      ),
+    }))
+    .filter((m) => m.distance <= near.radiusMiles)
+    // Closest first; whole miles so a ride leaving sooner wins over one a few yards closer
+    .sort(
+      (a, b) =>
+        Math.round(a.distance) - Math.round(b.distance) ||
+        a.departureTime.getTime() - b.departureTime.getTime(),
+    );
+
+  const pageMatches = matches.slice((page - 1) * pageSize, page * pageSize);
+  const posts = await prisma.ridePost.findMany({
+    where: { id: { in: pageMatches.map((m) => m.id) } },
+    include: { creator: { select: publicUserSelect } },
+  });
+  const byId = new Map(posts.map((p) => [p.id, p]));
+
+  return {
+    items: pageMatches.flatMap((m) => {
+      const post = byId.get(m.id);
+      return post ? [toListItem(post, m.distance)] : [];
+    }),
+    page,
+    pageSize,
+    total: matches.length,
+    totalPages: Math.max(1, Math.ceil(matches.length / pageSize)),
+  };
+}
 
 export async function fetchPosts(opts: {
   page: number;
   pageSize?: number;
   rideStatus: RideStatus | 'ALL';
   ownerId?: string;
-}): Promise<{
-  items: RidePostListItem[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}> {
+  /** Only rides whose route (origin to destination) passes within the radius of this point. */
+  near?: SearchNearInput;
+}): Promise<PostsPage> {
   await requireUser();
 
   const pageSize = Math.min(Math.max(1, opts.pageSize ?? 12), 50);
@@ -59,6 +152,10 @@ export async function fetchPosts(opts: {
     }),
   };
 
+  if (opts.near) {
+    return fetchPostsNear(searchNearSchema.parse(opts.near), where, page, pageSize);
+  }
+
   const [posts, total] = await Promise.all([
     prisma.ridePost.findMany({
       where,
@@ -71,12 +168,7 @@ export async function fetchPosts(opts: {
   ]);
 
   return {
-    items: posts.map((post) => ({
-      ...post,
-      price: post.price?.toString() ?? '0',
-      origin: post.originName ?? UNKNOWN_PLACE,
-      destination: post.destinationName ?? UNKNOWN_PLACE,
-    })),
+    items: posts.map(toListItem),
     page,
     pageSize,
     total,
@@ -92,8 +184,8 @@ export async function publishPost(
     const data = publishPostSchema.parse(input);
 
     const [geocodedOrigin, geocodedDestination] = await Promise.all([
-      geocodeAddress(data.origin),
-      geocodeAddress(data.destination),
+      resolvePlace(data.origin),
+      resolvePlace(data.destination),
     ]);
 
     const post = await prisma.ridePost.create({
@@ -160,8 +252,8 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ac
     }
 
     const [geocodedOrigin, geocodedDestination] = await Promise.all([
-      data.origin ? geocodeAddress(data.origin) : Promise.resolve(null),
-      data.destination ? geocodeAddress(data.destination) : Promise.resolve(null),
+      data.origin ? resolvePlace(data.origin) : Promise.resolve(null),
+      data.destination ? resolvePlace(data.destination) : Promise.resolve(null),
     ]);
 
     await prisma.ridePost.update({

@@ -5,10 +5,9 @@
  */
 
 import { UserError } from '@/lib/actionResult';
+import { formatPlaceName } from '@/lib/placeName';
 
 const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
-
-export const UNKNOWN_PLACE = 'Unknown location';
 
 export interface GeocodedPlace {
   lat: number;
@@ -44,13 +43,6 @@ const apiKey = (): string => {
   return key;
 };
 
-const placeName = (components: AddressComponent[] | undefined): string => {
-  const town = components?.find((e) => e.types.includes('locality'));
-  const state = components?.find((e) => e.types.includes('administrative_area_level_1'));
-
-  return [town?.short_name, state?.short_name].filter(Boolean).join(', ') || UNKNOWN_PLACE;
-};
-
 export async function geocodeAddress(address: string): Promise<GeocodedPlace> {
   const url = new URL(GEOCODE_URL);
   url.searchParams.set('address', address);
@@ -71,5 +63,10 @@ export async function geocodeAddress(address: string): Promise<GeocodedPlace> {
     );
   }
 
-  return { ...result.geometry.location, name: placeName(result.address_components) };
+  return {
+    ...result.geometry.location,
+    name: formatPlaceName(
+      result.address_components.map((c) => ({ short: c.short_name, types: c.types })),
+    ),
+  };
 }
